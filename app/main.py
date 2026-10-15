@@ -3,6 +3,7 @@
 import hmac
 import json
 import logging
+import re
 from hashlib import sha256
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -77,12 +78,31 @@ app.add_middleware(
 )
 
 
+def _request_correlation_id(request: Request) -> str:
+    """Reuse a safe client correlation ID or generate one without reflecting arbitrary text."""
+    existing = getattr(request.state, "debuglens_correlation_id", None)
+    if existing:
+        return str(existing)
+    supplied = request.headers.get("X-Correlation-ID", "")
+    request_id = supplied if re.fullmatch(r"[A-Za-z0-9._-]{1,100}", supplied) else str(uuid4())
+    request.state.debuglens_correlation_id = request_id
+    return request_id
+
+
+def _apply_response_headers(response: Response, request: Request) -> Response:
+    """Apply correlation and browser/cache safety headers to successful and rejected responses."""
+    response.headers["X-Correlation-ID"] = _request_correlation_id(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
 @app.middleware("http")
 async def correlation_id(request: Request, call_next: RequestResponseEndpoint) -> Response:
-    request_id = request.headers.get("X-Correlation-ID", str(uuid4()))[:100]
     response = await call_next(request)
-    response.headers["X-Correlation-ID"] = request_id
-    return response
+    return _apply_response_headers(response, request)
 
 
 @app.middleware("http")
@@ -105,19 +125,24 @@ async def request_guardrails(request: Request, call_next: RequestResponseEndpoin
         try:
             declared_length = int(content_length)
         except ValueError:
-            return JSONResponse(status_code=400, content={"detail": "Invalid Content-Length header."})
+            return _apply_response_headers(
+                JSONResponse(status_code=400, content={"detail": "Invalid Content-Length header."}),
+                request,
+            )
         if declared_length < 0:
-            return JSONResponse(status_code=400, content={"detail": "Invalid Content-Length header."})
+            return _apply_response_headers(
+                JSONResponse(status_code=400, content={"detail": "Invalid Content-Length header."}),
+                request,
+            )
         # Allow multipart framing and form fields in addition to the bounded screenshot itself.
         max_request_bytes = settings.max_upload_bytes + 1024 * 1024
         if declared_length > max_request_bytes:
-            return JSONResponse(status_code=413, content={"detail": "Request body exceeds the configured limit."})
+            return _apply_response_headers(
+                JSONResponse(status_code=413, content={"detail": "Request body exceeds the configured limit."}),
+                request,
+            )
     response = await call_next(request)
-    response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["X-Frame-Options"] = "DENY"
-    response.headers["Referrer-Policy"] = "no-referrer"
-    response.headers["Cache-Control"] = "no-store"
-    return response
+    return _apply_response_headers(response, request)
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:

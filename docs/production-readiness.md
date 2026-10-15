@@ -6,7 +6,7 @@
 
 - API supports a configured shared bearer token; production startup refuses tokens shorter than 32 non-whitespace characters. This is still not per-user identity, RBAC, or tenant isolation.
 - Uploads have content-type, byte-size, image-format, and pixel-count checks; an app-level guard rejects oversized declared `Content-Length` bodies.
-- API responses add `nosniff`, frame-denial, no-referrer, and no-store headers. The body guard does not replace streaming limits at a reverse proxy and does not independently cap chunked requests without `Content-Length`.
+- API responses add `nosniff`, frame-denial, no-referrer, and no-store headers, and correlation IDs are restricted to a short safe character set. The body guard does not replace streaming limits at a reverse proxy and does not independently cap chunked requests without `Content-Length`.
 - A dry-run-first CLI can delete old terminal workflows and related local SQLite records, with an aggregate retention audit event. It does not delete S3 objects, backups, logs, provider-side copies, or containers.
 - Common sensitive text patterns are redacted before outbound vision-provider calls.
 - External vision-provider image transfer is denied by default because screenshot pixels are not redacted; the operator must explicitly set `ALLOW_UNREDACTED_SCREENSHOTS=true` to opt in. This is not a substitute for OCR redaction or privacy review.
