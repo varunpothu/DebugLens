@@ -67,7 +67,7 @@ jobs:
       - name: Prepare isolated Terraform validation directory
         run: cp -a infra/terraform "$RUNNER_TEMP/terraform"
       - name: Check Terraform formatting
-        run: docker run --rm -v "$RUNNER_TEMP/terraform:/workspace" -w /workspace hashicorp/terraform:1.10 fmt -check -recursive
+        run: docker run --rm -v "$RUNNER_TEMP/terraform:/workspace" -w /workspace hashicorp/terraform:1.10 fmt -check -diff -recursive
       - name: Initialise Terraform without a backend
         run: docker run --rm -v "$RUNNER_TEMP/terraform:/workspace" -w /workspace hashicorp/terraform:1.10 init -backend=false -input=false
       - name: Validate Terraform configuration
