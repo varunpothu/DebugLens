@@ -43,8 +43,7 @@ def _git_output(source: Path, *arguments: str) -> str:
         result = subprocess.run(
             ["git", "-C", str(source), *arguments],
             stdin=subprocess.DEVNULL,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             timeout=10,
             check=False,
             shell=False,
