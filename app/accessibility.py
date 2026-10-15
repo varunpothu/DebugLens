@@ -145,7 +145,9 @@ def validate_accessibility_report(value: object) -> dict[str, Any]:
         impact = item.get("impact")
         message = item.get("message")
         target = item.get("target")
-        if not all(isinstance(field, str) and field.strip() for field in (rule_id, impact, message, target)):
+        if not all(isinstance(field, str) for field in (rule_id, impact, message, target)):
+            continue
+        if not rule_id.strip() or not impact.strip() or not message.strip() or not target.strip():
             continue
         issues.append({
             "rule_id": rule_id[:80],
