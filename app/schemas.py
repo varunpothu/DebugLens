@@ -123,7 +123,7 @@ class ExecutionResultRequest(BaseModel):
     outcome: str = Field(pattern="^(passed|failed|timed_out)$")
     exit_code: int | None = Field(default=None, ge=-255, le=255)
     timed_out: bool
-    duration_seconds: float = Field(ge=0, le=300)
+    duration_seconds: float = Field(ge=0, le=360)
     workspace_sha256: str = Field(pattern="^[a-f0-9]{64}$")
     output: str = Field(max_length=20000)
     output_truncated: bool
