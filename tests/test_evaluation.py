@@ -1,7 +1,7 @@
 from io import BytesIO
 
-from PIL import Image
 import pytest
+from PIL import Image
 
 from app.evaluation import compare_models
 
