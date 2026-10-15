@@ -47,6 +47,7 @@ def initialise_store() -> None:
 
 def _event_dict(event: Any) -> dict[str, Any]:
     return {
+        "event_type": "state_transition",
         "event_id": event.event_id,
         "workflow_id": event.workflow_id,
         "from_state": event.from_state.value if event.from_state else None,
@@ -152,6 +153,49 @@ def transition_run(
         db.commit()
     return get_run(workflow_id)
 
+
+
+def attach_browser_evidence(
+    workflow_id: str,
+    *,
+    actor: str,
+    evidence: dict[str, Any],
+) -> dict[str, Any]:
+    """Attach minimised browser evidence and record who initiated the capture."""
+    initialise_store()
+    if not actor.strip() or len(actor) > 120:
+        raise ValueError("Actor must contain 1 to 120 characters.")
+    with _connect() as db:
+        db.execute("BEGIN IMMEDIATE")
+        row = db.execute("SELECT * FROM debug_runs WHERE workflow_id = ?", (workflow_id,)).fetchone()
+        if row is None:
+            db.rollback()
+            raise KeyError(workflow_id)
+        record = _decode_row(row)
+        events = record["events"]
+        now = datetime.now(timezone.utc).isoformat()
+        events.append({
+            "event_type": "browser_evidence_attached",
+            "event_id": __import__("uuid").uuid4().hex,
+            "workflow_id": workflow_id,
+            "from_state": record["state"],
+            "to_state": record["state"],
+            "actor": actor,
+            "reason": "Approved browser capture completed; metadata and analysis were attached.",
+            "timestamp": now,
+        })
+        db.execute(
+            """UPDATE debug_runs SET browser_evidence_json = ?, updated_at = ?, events_json = ?
+               WHERE workflow_id = ?""",
+            (
+                json.dumps(evidence, separators=(",", ":")),
+                now,
+                json.dumps(events, separators=(",", ":")),
+                workflow_id,
+            ),
+        )
+        db.commit()
+    return get_run(workflow_id)
 
 def _decode_row(row: sqlite3.Row) -> dict[str, Any]:
     return {
