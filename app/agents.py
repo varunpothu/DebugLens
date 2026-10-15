@@ -27,7 +27,8 @@ def build_investigation_pipeline(
             confidence = max(0.0, min(1.0, float(finding.get("confidence", 0.0))))
         except (TypeError, ValueError):
             confidence = 0.0
-        evidence = finding.get("evidence") if isinstance(finding.get("evidence"), list) else []
+        raw_evidence = finding.get("evidence")
+        evidence = raw_evidence if isinstance(raw_evidence, list) else []
         observed = [item for item in evidence if isinstance(item, dict) and item.get("observed") is True]
         for item in evidence:
             if isinstance(item, dict):
