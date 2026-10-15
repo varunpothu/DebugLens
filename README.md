@@ -54,7 +54,7 @@ Planned: sandboxed tests -> proposed patch -> human verification
 - app/: FastAPI API, typed contracts, multimodal adapters, deterministic investigation stages, evaluation harness, SQLite run store, workflow state machine, optional browser capture, visual regression metrics, and static accessibility heuristics.
 - tests/: API, image validation, model comparison and workflow transition tests.
 - frontend/: optional Streamlit upload client.
-- docs/: architecture, agent workflow, threat model, evaluation, operations, isolated-worker contract, visual regression, accessibility, provider-input redaction, production-readiness guides, and roadmap.
+- docs/: architecture, agent workflow, threat model, evaluation, operations, isolated-worker contract, visual regression, accessibility, provider-input redaction, local data-retention, production-readiness guides, and roadmap.
 - runner/: allowlisted test worker, Docker orchestrator, Git-verified workspace provisioner, and durable local execution queue.
 - .github/workflows/: CI quality gates.
 - examples/demo-ui/: intentionally broken and fixed synthetic storefront for reproducible demos.
@@ -103,6 +103,21 @@ docker compose up --build
 
 Open http://127.0.0.1:8000/docs. Stop the stack with `Ctrl+C`, then run `docker compose down`. The SQLite database is stored in a named Docker volume. The `.dockerignore` file excludes local secrets, databases, screenshots, and development artefacts from the build context. Do not put real credentials in a committed file; keep `.env` local.
 
+## Local data retention
+
+Preview eligible terminal runs older than 90 days (dry-run by default):
+
+~~~powershell
+python -m runner.retention --retention-days 90
+~~~
+
+After reviewing the count, explicitly delete eligible local SQLite run and child records:
+
+~~~powershell
+python -m runner.retention --retention-days 90 --apply --actor local-operator
+~~~
+
+This utility does not delete S3 objects, backups, logs, provider-side copies, or containers. See `docs/data-retention.md` for scope and production gaps.
 ## Configure a vision model
 
 The default mode is mock and does not interpret pixels. Choose exactly one provider in .env and set its credential. Never commit .env or paste keys into issues.
