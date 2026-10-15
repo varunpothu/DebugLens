@@ -256,6 +256,34 @@ with review_tab:
                 st.subheader("Recorded test reports")
                 st.dataframe(run["test_reports"], use_container_width=True, hide_index=True)
 
+        execution_reports = run.get("execution_reports", [])
+        if execution_reports:
+            st.subheader("Trusted isolated execution reports")
+            st.dataframe(
+                [
+                    {
+                        "Suite": report.get("suite"),
+                        "Outcome": report.get("outcome"),
+                        "Exit code": report.get("exit_code"),
+                        "Timed out": report.get("timed_out"),
+                        "Duration (s)": report.get("duration_seconds"),
+                        "Patch SHA-256": report.get("patch_sha256"),
+                        "Workspace SHA-256": report.get("workspace_sha256"),
+                        "Actor": report.get("actor"),
+                        "Recorded": report.get("created_at"),
+                    }
+                    for report in execution_reports
+                ],
+                use_container_width=True,
+                hide_index=True,
+            )
+            for index, report in enumerate(execution_reports, start=1):
+                with st.expander(f"Execution output {index}: {report.get('suite', 'unknown suite')}"):
+                    st.caption("Output is bounded by the worker. Review it for secrets before sharing.")
+                    st.code(str(report.get("output") or "")[:4000], language="text")
+                    if report.get("output_truncated"):
+                        st.warning("The worker truncated the output; this is not the complete log.")
+
         st.subheader("Audit history")
         st.dataframe(run["events"], use_container_width=True, hide_index=True)
 
