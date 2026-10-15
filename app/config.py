@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     gemini_model: str = "gemini-2.5-flash"
     vision_timeout_seconds: float = Field(default=45.0, ge=1.0, le=120.0)
     database_path: str = "./data/debuglens.db"
+    api_access_token: str = ""
     browser_enabled: bool = False
     browser_allowed_hosts: str = ""
 
