@@ -27,7 +27,7 @@ def test_validate_target_file_rejects_traversal_and_absolute_paths() -> None:
     for path in (
         "../secret.txt", "/etc/passwd", "C:\\temp\\secret.txt", ".git/config",
         "src/../secret.txt", "src//secret.txt", "src/./secret.txt",
-        "src/file.css\\n+++ b/secrets.txt", "src/file.css\\x00",
+        "src/file.css\n+++ b/secrets.txt", "src/file.css\x00",
     ):
         with pytest.raises(ValueError):
             validate_target_file(path)
