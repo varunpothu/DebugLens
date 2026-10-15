@@ -67,3 +67,14 @@ class TransitionRequest(BaseModel):
     target: str = Field(min_length=1, max_length=40)
     actor: str = Field(min_length=1, max_length=120)
     reason: str = Field(min_length=1, max_length=1000)
+
+
+
+class BrowserCaptureRequest(BaseModel):
+    """Explicit browser capture request; enabled only for approved hostnames."""
+
+    model_config = ConfigDict(extra="forbid")
+    target_url: str = Field(min_length=8, max_length=2048)
+    actor: str = Field(min_length=1, max_length=120)
+    viewport_width: int = Field(default=1440, ge=320, le=3840)
+    viewport_height: int = Field(default=900, ge=320, le=2160)
