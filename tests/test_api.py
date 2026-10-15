@@ -210,6 +210,7 @@ def test_patch_proposal_and_test_result_api_enforce_digest_gate(monkeypatch) -> 
     monkeypatch.setattr("app.main.settings.execution_signing_secret", "test-signing-secret-that-is-long-enough-32")
     payload = {
         "workflow_id": workflow_id,
+        "execution_id": "00000000-0000-4000-8000-000000000001",
         "patch_sha256": digest,
         "suite": "pytest",
         "outcome": "passed",
@@ -232,6 +233,26 @@ def test_patch_proposal_and_test_result_api_enforce_digest_gate(monkeypatch) -> 
     )
     assert execution.status_code == 200
     assert execution.json()["execution_reports"][0]["workspace_sha256"] == "a" * 64
+
+    replay = client.post(
+        f"/v1/debug-runs/{workflow_id}/execution-results",
+        content=body,
+        headers={"Content-Type": "application/json", "X-DebugLens-Signature": signature},
+    )
+    assert replay.status_code == 200
+    assert len(replay.json()["execution_reports"]) == 1
+
+    altered_payload = payload | {"output": "forged replay"}
+    altered_body = json.dumps(altered_payload, separators=(",", ":"), sort_keys=True).encode("utf-8")
+    altered_signature = hmac.new(
+        b"test-signing-secret-that-is-long-enough-32", altered_body, hashlib.sha256
+    ).hexdigest()
+    altered_replay = client.post(
+        f"/v1/debug-runs/{workflow_id}/execution-results",
+        content=altered_body,
+        headers={"Content-Type": "application/json", "X-DebugLens-Signature": altered_signature},
+    )
+    assert altered_replay.status_code == 409
 
     verified = client.post(
         f"/v1/debug-runs/{workflow_id}/transitions",
