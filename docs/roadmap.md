@@ -46,11 +46,13 @@
 - [x] Provision a reviewed single-file text patch into a disposable copy with base/patch/workspace digests and manifest verification
 - [x] Verify the supplied full base commit SHA against Git HEAD and reject dirty/untracked working trees
 - [x] Add durable local SQLite queue with idempotency, worker leases, bounded retries, cancellation, and global concurrency cap
-- [ ] Add container cleanup monitoring and a dedicated dead-letter queue with operator replay
+- [ ] Add independent container cleanup monitoring
+- [x] Add dead-letter tracking, inspection, and explicit operator replay for exhausted infrastructure failures
 - [x] Implement bounded provider-backed patch suggestion from user-supplied source context without automatic application
 - [ ] Add bounded LLM specialist agents for diagnosis and test planning
 - [x] Add local durable orchestration, idempotency, bounded infrastructure retries, timeout handling, and cancellation
-- [ ] Add durable dead-letter queue, scheduled retry policy, and operator replay tooling
+- [x] Add durable dead-letter tracking and operator replay tooling
+- [ ] Add scheduled retry/backoff policy and operator alerts for dead-letter jobs
 - [ ] Enforce tool permissions and human approval in code, not only in prompts
 - [ ] Add prompt-injection and tool-boundary red-team tests
 
