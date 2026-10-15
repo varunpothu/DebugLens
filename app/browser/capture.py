@@ -6,6 +6,7 @@ application guard, not a replacement for network-level SSRF protection.
 from __future__ import annotations
 
 import ipaddress
+from typing import Any
 from dataclasses import dataclass
 from urllib.parse import urlparse
 
@@ -81,7 +82,7 @@ async def capture_page(
             page = await context.new_page()
             page.set_default_timeout(timeout_ms)
 
-            async def guard_request(route, request) -> None:
+            async def guard_request(route: Any, request: Any) -> None:
                 try:
                     validate_target_url(request.url, allowed)
                     if request.method not in {"GET", "HEAD"}:
