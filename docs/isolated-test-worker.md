@@ -46,10 +46,11 @@ Build the image, prepare a reviewed workspace snapshot, then run the orchestrato
 ```bash
 docker build -f runner/Dockerfile -t debuglens-test-worker:local .
 python -m runner.orchestrate \
-  --workspace ./reviewed-workspace \
+  --workspace ./provisioned-workspace \
+  --patch-file ./reviewed.patch \
+  --manifest ./provisioned-workspace-manifest.json \
   --suite pytest \
   --workflow-id YOUR_WORKFLOW_ID \
-  --patch-sha256 YOUR_CURRENT_PATCH_SHA256 \
   --actor local-reviewer \
   --api-url http://127.0.0.1:8000
 ```
@@ -120,7 +121,7 @@ python -m runner.job_queue dead-letter --limit 20
 python -m runner.job_queue replay YOUR_JOB_ID
 ```
 
-Set `DEBUGLENS_QUEUE_DATABASE` to choose a local queue database path. Reusing an idempotency key with the same payload returns the existing job; reusing it with a different payload is rejected. Running cancellation sends an interrupt to the orchestrator process group and escalates if necessary. A worker lease expires after seven minutes; another worker can recover a stale job, with at most two attempts. Exhausted infrastructure failures are marked as dead letters and can only be replayed through the explicit operator command. Use the queue only on a trusted host with Docker access. Review cancellation and container cleanup behavior in your own Docker runtime before production use.
+Set `DEBUGLENS_QUEUE_DATABASE` to choose a local queue database path. Reusing an idempotency key with the same payload returns the existing job; reusing it with a different payload is rejected. Running cancellation sends an interrupt to the orchestrator process group and escalates if necessary. The orchestrator gives each Docker worker a unique name and attempts `docker rm -f` after a timeout; if cleanup cannot be confirmed, the result output warns the operator to inspect the Docker host. This is per-run best effort, not independent orphan-container monitoring. A worker lease expires after seven minutes; another worker can recover a stale job, with at most two attempts. Exhausted infrastructure failures are marked as dead letters and can only be replayed through the explicit operator command. Use the queue only on a trusted host with Docker access. Review cancellation and container cleanup behavior in your own Docker runtime before production use.
 
 ## Important limitations
 
