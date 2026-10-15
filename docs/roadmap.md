@@ -38,10 +38,13 @@
 - [x] Explicit workflow state machine and audit events
 - [x] Human review dashboard for run history and legal transitions
 - [x] Human-authored and provider-assisted patch proposals with digest, rationale, risk, and rollback plan
-- [x] Test-result records tied to the exact patch digest
-- [x] Gate verification on a passing report for the current patch digest
-- [x] Add a standalone allowlisted test-worker prototype with timeout, output cap, and workspace snapshot digest
-- [ ] Integrate worker results into the API and independently persist trusted execution evidence
+- [x] Reviewer-reported test-result records tied to the exact patch digest
+- [x] Gate verification on a passing signed execution report for the current patch digest
+- [x] Add a standalone allowlisted test-worker with timeout, output cap, and workspace snapshot digest
+- [x] Add a host-side Docker orchestrator and HMAC-signed execution-result API
+- [x] Persist execution suite, exit code, workspace digest, duration, and bounded logs
+- [ ] Provision the exact reviewed patch into a disposable workspace automatically
+- [ ] Add queueing, cancellation, concurrency limits, and container cleanup monitoring
 - [x] Implement bounded provider-backed patch suggestion from user-supplied source context without automatic application
 - [ ] Add bounded LLM specialist agents for diagnosis and test planning
 - [ ] Add durable orchestration, idempotency, retries, timeout handling, cancellation, and dead-letter queue
@@ -52,7 +55,8 @@
 
 - [ ] Screenshot baseline comparison and perceptual metrics
 - [ ] Accessibility checks and cross-viewport test matrix
-- [ ] Run tests in an isolated worker with no secrets and restricted egress
+- [x] Run approved suites in a network-disabled worker container with no secrets and resource limits
+- [ ] Add an independent review of the sandbox boundary and Docker daemon permissions
 - [ ] Require green machine-captured checks and explicit human approval before repository changes
 - [ ] Add rollback and regression verification
 
