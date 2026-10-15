@@ -142,10 +142,10 @@ resource "aws_iam_role_policy" "api_artifacts" {
     Version   = "2012-10-17"
     Statement = [
       {
-        Sid      = "ApiArtifactObjects"
-        Effect   = "Allow"
-        Action   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
-        Resource = ["${aws_s3_bucket.artifacts.arn}/api/*"]
+        Sid       = "ApiArtifactObjects"
+        Effect    = "Allow"
+        Action    = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
+        Resource  = ["${aws_s3_bucket.artifacts.arn}/api/*"]
       },
       {
         Sid       = "ApiArtifactEncryption"
@@ -172,16 +172,16 @@ resource "aws_iam_role_policy" "worker_artifacts" {
     Version   = "2012-10-17"
     Statement = [
       {
-        Sid      = "WorkerReadInputs"
-        Effect   = "Allow"
-        Action   = ["s3:GetObject"]
-        Resource = ["${aws_s3_bucket.artifacts.arn}/worker-input/*"]
+        Sid       = "WorkerReadInputs"
+        Effect    = "Allow"
+        Action    = ["s3:GetObject"]
+        Resource  = ["${aws_s3_bucket.artifacts.arn}/worker-input/*"]
       },
       {
-        Sid      = "WorkerWriteResults"
-        Effect   = "Allow"
-        Action   = ["s3:PutObject"]
-        Resource = ["${aws_s3_bucket.artifacts.arn}/worker-results/*"]
+        Sid       = "WorkerWriteResults"
+        Effect    = "Allow"
+        Action    = ["s3:PutObject"]
+        Resource  = ["${aws_s3_bucket.artifacts.arn}/worker-results/*"]
       },
       {
         Sid       = "WorkerArtifactEncryption"
