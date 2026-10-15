@@ -6,6 +6,7 @@ from PIL import Image, UnidentifiedImageError
 
 from app.config import get_settings
 from app.providers.base import ImageInput, ProviderResult, VisionProvider
+from app.redaction import redact_sensitive_text
 from app.providers.native_vision import AnthropicVisionProvider, GeminiVisionProvider
 from app.providers.openai_compatible import OpenAICompatibleVisionProvider
 from app.schemas import AnalysisResponse, Evidence, Finding, Severity
@@ -121,7 +122,7 @@ def analyse_screenshot(
         provider_version = "baseline-1"
     else:
         result = _run_vision_provider(
-            provider, image_bytes, digest, width, height, media_type, bug_report
+            provider, image_bytes, digest, width, height, media_type, redact_sensitive_text(bug_report)
         )
         findings = result.findings
         provider_version = result.model
