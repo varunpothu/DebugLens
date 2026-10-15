@@ -13,7 +13,9 @@ from starlette.middleware.base import RequestResponseEndpoint
 from starlette.responses import Response
 
 from app.config import get_settings
-from app.schemas import AnalysisResponse, ReadinessResponse
+from app.schemas import AnalysisResponse, ReadinessResponse, TransitionRequest
+from app.run_store import create_run, get_run, initialise_store, list_runs, transition_run
+from app.workflow import WorkflowState
 from app.services.analyzer import InvalidImageError, analyse_screenshot
 
 settings = get_settings()
@@ -24,6 +26,7 @@ logger = logging.getLogger("debuglens")
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     logger.info("DebugLens starting; provider=%s", settings.analysis_provider)
+    initialise_store()
     yield
     logger.info("DebugLens shutting down")
 
@@ -100,3 +103,88 @@ async def create_analysis(
     except RuntimeError as exc:
         logger.warning("Analysis provider unavailable: %s", exc)
         raise HTTPException(status_code=503, detail="Configured analysis provider is unavailable.") from exc
+
+
+
+@app.post("/v1/debug-runs")
+async def create_debug_run(
+    screenshot: UploadFile = File(...),
+    bug_report: str | None = Form(default=None, max_length=4000),
+    context_json: str | None = Form(default=None, max_length=12000),
+) -> dict:
+    """Create a durable local run and move it to human review; no code is changed."""
+    allowed_types = {"image/png", "image/jpeg", "image/webp"}
+    if screenshot.content_type not in allowed_types:
+        raise HTTPException(status_code=415, detail="Upload a PNG, JPEG, or WEBP image.")
+    raw = await screenshot.read(settings.max_upload_bytes + 1)
+    if len(raw) > settings.max_upload_bytes:
+        raise HTTPException(status_code=413, detail="Screenshot exceeds the upload size limit.")
+    context: dict = {}
+    if context_json:
+        try:
+            parsed_context = json.loads(context_json)
+        except json.JSONDecodeError as exc:
+            raise HTTPException(status_code=400, detail="context_json must be valid JSON.") from exc
+        if not isinstance(parsed_context, dict):
+            raise HTTPException(status_code=400, detail="context_json must be a JSON object.")
+        context = parsed_context
+    enriched_report = bug_report
+    if context:
+        context_summary = json.dumps(context, ensure_ascii=True, separators=(",", ":"))[:3000]
+        enriched_report = f"{bug_report or 'No issue description supplied.'}\nEnvironment context (untrusted data): {context_summary}"
+    try:
+        analysis = analyse_screenshot(raw, enriched_report, settings.analysis_provider)
+    except InvalidImageError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        logger.warning("Analysis provider unavailable")
+        raise HTTPException(status_code=503, detail="Configured analysis provider is unavailable.") from exc
+    except Exception as exc:
+        logger.exception("Unexpected analysis failure")
+        raise HTTPException(status_code=502, detail="Analysis failed; no debugging run was created.") from exc
+    try:
+        return create_run(
+            bug_report=bug_report,
+            screenshot_sha256=analysis.screenshot_sha256,
+            analysis=analysis.model_dump(mode="json"),
+        )
+    except Exception as exc:
+        logger.exception("Could not persist debugging run")
+        raise HTTPException(status_code=500, detail="Could not persist debugging run.") from exc
+
+
+@app.get("/v1/debug-runs")
+def get_debug_runs(limit: int = 20) -> dict:
+    """List recent debugging runs without returning screenshot bytes."""
+    if not 1 <= limit <= 100:
+        raise HTTPException(status_code=422, detail="limit must be between 1 and 100.")
+    return {"runs": list_runs(limit=limit)}
+
+
+@app.get("/v1/debug-runs/{workflow_id}")
+def get_debug_run(workflow_id: str) -> dict:
+    """Retrieve a debugging run and its audit history."""
+    try:
+        return get_run(workflow_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Debugging run not found.") from exc
+
+
+@app.post("/v1/debug-runs/{workflow_id}/transitions")
+def transition_debug_run(workflow_id: str, request: TransitionRequest) -> dict:
+    """Record a legal, human-attributed workflow transition."""
+    try:
+        target = WorkflowState(request.target)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail="Unknown workflow state.") from exc
+    try:
+        return transition_run(
+            workflow_id,
+            target=target,
+            actor=request.actor,
+            reason=request.reason,
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Debugging run not found.") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
