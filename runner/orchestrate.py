@@ -15,6 +15,7 @@ import time
 import urllib.error
 import urllib.request
 from pathlib import Path
+from urllib.parse import quote, urlparse
 
 from runner.worker import workspace_digest
 
@@ -30,8 +31,11 @@ def execute(
     timeout_seconds: int = 330,
 ) -> tuple[dict[str, object], int]:
     """Execute the fixed suite inside a disposable, network-disabled Docker container."""
-    workspace = workspace.expanduser().resolve(strict=True)
-    if not workspace.is_dir() or workspace.is_symlink():
+    workspace = workspace.expanduser()
+    if workspace.is_symlink():
+        raise ValueError("Workspace path must not itself be a symlink.")
+    workspace = workspace.resolve(strict=True)
+    if not workspace.is_dir():
         raise ValueError("Workspace must be an existing real directory.")
     if "," in str(workspace):
         raise ValueError("Workspace paths containing commas are not supported by Docker --mount.")
@@ -162,9 +166,19 @@ def submit_result(
 ) -> int:
     """Submit the signed execution report over HTTPS (localhost HTTP is permitted for dev)."""
     base = api_url.rstrip("/")
-    if not base.startswith("https://") and not base.startswith("http://127.0.0.1") and not base.startswith("http://localhost"):
-        raise ValueError("Use HTTPS, or localhost HTTP for development.")
-    url = f"{base}/v1/debug-runs/{workflow_id}/execution-results"
+    parsed = urlparse(base)
+    local_http_hosts = {"localhost", "127.0.0.1", "::1"}
+    if (
+        parsed.scheme not in {"https", "http"}
+        or not parsed.hostname
+        or parsed.username is not None
+        or parsed.password is not None
+        or (parsed.scheme == "http" and parsed.hostname not in local_http_hosts)
+        or parsed.query
+        or parsed.fragment
+    ):
+        raise ValueError("Use HTTPS, or HTTP on localhost only, without URL credentials.")
+    url = f"{base}/v1/debug-runs/{quote(workflow_id, safe='')}/execution-results"
     headers = {
         "Content-Type": "application/json",
         "X-DebugLens-Signature": signature,
