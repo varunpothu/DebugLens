@@ -203,7 +203,7 @@ The workflow module models legal transitions from RECEIVED through evidence coll
 - No generated code is automatically executed, merged, or deployed. The optional standalone worker must be run in its documented disposable, network-disabled container; running it directly on the host is not isolation.
 - Future browser access must use allow-listed targets, network egress controls, and disposable workers.
 - A failed or timed-out test is never a pass.
-- The isolated runner requires a workspace manifest and the original reviewed patch file; see [the worker guide](docs/isolated-test-worker.md) for provisioning, digest checks, and current limitations.
+- The isolated runner requires a workspace manifest and original reviewed patch file. The local SQLite queue adds idempotent submissions, lease recovery, bounded retries, cancellation, and a concurrency cap. See [the worker guide](docs/isolated-test-worker.md) for commands and security limitations.
 - Use synthetic/redacted fixtures and explicit retention controls.
 - Review docs/threat-model.md and docs/evaluation.md before enabling a real provider.
 
