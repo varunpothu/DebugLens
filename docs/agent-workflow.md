@@ -28,4 +28,4 @@
 - Gate C: approve the exact patch digest before tests that execute modified code.
 - Gate D: approve repository change or release after required checks pass.
 
-The current repository implements the state machine and provider contracts, not the agents themselves. Agent execution, browser access, and patch handling remain disabled until sandbox and policy enforcement are implemented and tested.
+The repository currently implements deterministic evidence-summary, hypothesis-ranking, test-planning, and assurance stages in `app/agents.py`. These stages do not call separate LLM agents and do not execute tests or code. The browser collector is optional and disabled by default. Patch proposals are human-authored and stored by digest; test outcomes are reviewer-reported. Fully autonomous specialist agents, isolated test execution, and code repair remain disabled until sandboxing, authentication, and policy enforcement are implemented and tested.
