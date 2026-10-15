@@ -48,6 +48,7 @@
 - [x] Verify the supplied full base commit SHA against Git HEAD and reject dirty/untracked working trees
 - [x] Add durable local SQLite queue with idempotency, worker leases, bounded retries, cancellation, and global concurrency cap
 - [x] Name each Docker worker and attempt explicit cleanup after an orchestrator timeout; warn if cleanup cannot be confirmed
+- [x] Add a dry-run-first utility to reconcile stale, explicitly labelled DebugLens worker containers
 - [ ] Add independent container cleanup monitoring and orphan-worker reconciliation
 - [x] Add dead-letter tracking, inspection, and explicit operator replay for exhausted infrastructure failures
 - [x] Implement bounded provider-backed patch suggestion from user-supplied source context without automatic application

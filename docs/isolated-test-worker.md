@@ -123,6 +123,22 @@ python -m runner.job_queue replay YOUR_JOB_ID
 
 Set `DEBUGLENS_QUEUE_DATABASE` to choose a local queue database path. Reusing an idempotency key with the same payload returns the existing job; reusing it with a different payload is rejected. Running cancellation sends an interrupt to the orchestrator process group and escalates if necessary. The orchestrator gives each Docker worker a unique name and attempts `docker rm -f` after a timeout; if cleanup cannot be confirmed, the result output warns the operator to inspect the Docker host. This is per-run best effort, not independent orphan-container monitoring. A worker lease expires after seven minutes; another worker can recover a stale job, with at most two attempts. Exhausted infrastructure failures are marked as dead letters and can only be replayed through the explicit operator command. Use the queue only on a trusted host with Docker access. Review cancellation and container cleanup behavior in your own Docker runtime before production use.
 
+## Reconcile stale worker containers
+
+The orchestrator attempts cleanup when its own execution times out. For a host-side reconciliation pass, the optional cleanup utility considers only containers with the `com.debuglens.managed=true` label that are older than the configured threshold (minimum 10 minutes, default 30 minutes). It defaults to dry-run:
+
+```bash
+python -m runner.container_cleanup --max-age-seconds 1800
+```
+
+Review the output first, then explicitly apply removals:
+
+```bash
+python -m runner.container_cleanup --max-age-seconds 1800 --apply
+```
+
+The orchestrator adds the management label to newly created workers. The cleanup tool rechecks the label before removal and reports failures. Run it only on the trusted Docker host. It is not a continuously running monitor; an operator or trusted scheduler must invoke it. Do not lower the age threshold below 10 minutes, and do not use it to manage containers that lack the DebugLens label.
+
 ## Important limitations
 
 - The worker container is a sandbox boundary only when launched with the restrictions above. Running `runner/worker.py` directly on a host is not isolated.

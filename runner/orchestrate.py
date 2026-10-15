@@ -50,6 +50,7 @@ def execute(
     command = [
         "docker", "run", "--rm",
         "--name", container_name,
+        "--label", "com.debuglens.managed=true",
         "--network", "none",
         "--read-only",
         "--cap-drop", "ALL",
