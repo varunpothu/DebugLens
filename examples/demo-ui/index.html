@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DebugLens Demo Store</title>
+  <style>
+    :root { color-scheme: light; font-family: system-ui, sans-serif; }
+    body { margin: 0; background: #f5f7fb; color: #1f2937; }
+    .shell { max-width: 960px; margin: 0 auto; padding: 24px; }
+    .topbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+    .brand { font-weight: 800; font-size: 1.2rem; }
+    .card { margin-top: 28px; padding: 28px; border-radius: 18px; background: white; box-shadow: 0 8px 30px #0f172a12; }
+    .eyebrow { color: #6b7280; font-size: .8rem; text-transform: uppercase; letter-spacing: .08em; }
+    h1 { max-width: 15ch; line-height: 1.05; }
+    .muted { color: #b9b9b9; }
+    .actions { display: flex; gap: 12px; margin-top: 24px; }
+    button { border: 0; border-radius: 10px; padding: 12px 18px; font: inherit; cursor: pointer; }
+    .primary { background: #2563eb; color: white; width: 118%; }
+    .secondary { background: #e5e7eb; color: #111827; }
+    .notice { margin-top: 20px; border-left: 4px solid #f59e0b; padding: 12px; background: #fffbeb; }
+    .fixed .primary { width: auto; }
+    .fixed .muted { color: #52525b; }
+    .fixed .actions { flex-wrap: wrap; }
+    @media (max-width: 520px) {
+      .shell { padding: 14px; }
+      .topbar { align-items: flex-start; flex-direction: column; }
+      .card { padding: 18px; }
+      .actions { gap: 8px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div class="brand">Northstar Goods</div>
+      <div>Demo account · <span class="muted">Free plan</span></div>
+    </header>
+    <section class="card" aria-labelledby="heading">
+      <p class="eyebrow">New collection</p>
+      <h1 id="heading">Small details. Better everyday living.</h1>
+      <p class="muted">Discover practical products designed for calm, comfortable spaces.</p>
+      <div class="actions">
+        <button class="primary" id="shop-now">Shop the collection</button>
+        <button class="secondary" id="learn-more">Learn more</button>
+      </div>
+      <div class="notice" role="status">Orders over £40 qualify for free delivery.</div>
+    </section>
+  </main>
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("fixed") === "1") document.body.classList.add("fixed");
+    document.getElementById("shop-now").addEventListener("click", () => {
+      document.querySelector(".notice").textContent = "Demo action completed. No purchase was made.";
+    });
+    document.getElementById("learn-more").addEventListener("click", () => {
+      document.querySelector(".notice").textContent = "This is a local DebugLens test fixture.";
+    });
+  </script>
+</body>
+</html>
