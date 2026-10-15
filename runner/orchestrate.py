@@ -72,6 +72,7 @@ def execute(
             close_fds=True,
         )
         output = completed.stdout.decode("utf-8", errors="replace")
+        post_snapshot = workspace_digest(workspace)
         worker_result: dict[str, object] | None = None
         try:
             parsed = json.loads(output)
@@ -94,9 +95,13 @@ def execute(
             truncated = bool(worker_result.get("output_truncated", False))
             if outcome not in {"passed", "failed", "timed_out"}:
                 outcome = "failed"
-            if worker_result.get("suite") != suite or worker_result.get("workspace_sha256") != snapshot:
+            if (
+                worker_result.get("suite") != suite
+                or worker_result.get("workspace_sha256") != snapshot
+                or post_snapshot != snapshot
+            ):
                 outcome = "failed"
-                output_text = "Worker result suite or workspace digest does not match the host snapshot."
+                output_text = "Worker result suite/workspace digest mismatch or workspace changed during execution."
                 exit_code = completed.returncode
                 timed_out = False
                 truncated = False
