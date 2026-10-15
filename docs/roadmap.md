@@ -60,7 +60,8 @@
 
 - [x] Deterministic screenshot baseline comparison with changed-pixel ratio, mean absolute error, and diff bounds
 - [ ] Add perceptual similarity metrics and approved dynamic-region masking
-- [ ] Accessibility checks and cross-viewport test matrix
+- [x] Bounded static DOM accessibility heuristics for labels, names, headings, landmarks, duplicate IDs, and hidden focusables
+- [ ] Cross-viewport test matrix, keyboard/screen-reader checks, and full WCAG coverage
 - [x] Run approved suites in a network-disabled worker container with no secrets and resource limits
 - [ ] Add an independent review of the sandbox boundary and Docker daemon permissions
 - [ ] Require green machine-captured checks and explicit human approval before repository changes
