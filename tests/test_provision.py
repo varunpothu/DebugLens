@@ -1,4 +1,5 @@
 import json
+import subprocess
 from hashlib import sha256
 from pathlib import Path
 
@@ -32,7 +33,21 @@ def prepare(tmp_path: Path) -> tuple[Path, Path]:
     (base / ".env.example").write_text("EXAMPLE=value\n", encoding="utf-8")
     patch = tmp_path / "reviewed.patch"
     patch.write_text(PATCH, encoding="utf-8")
+    subprocess.run(["git", "init", "-q", str(base)], check=True)
+    subprocess.run(["git", "-C", str(base), "config", "user.email", "debuglens-test@example.invalid"], check=True)
+    subprocess.run(["git", "-C", str(base), "config", "user.name", "DebugLens Tests"], check=True)
+    subprocess.run(["git", "-C", str(base), "add", "-A"], check=True)
+    subprocess.run(["git", "-C", str(base), "commit", "-qm", "test base snapshot"], check=True)
     return base, patch
+
+
+def revision(base: Path) -> str:
+    return subprocess.run(
+        ["git", "-C", str(base), "rev-parse", "HEAD"],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
 
 
 def test_provision_creates_exact_patched_copy_without_mutating_base(tmp_path: Path) -> None:
@@ -43,7 +58,7 @@ def test_provision_creates_exact_patched_copy_without_mutating_base(tmp_path: Pa
         patch_file=patch,
         target_file="app.css",
         output_workspace=output,
-        base_revision="deadbeef",
+        base_revision=revision(base),
     )
     assert (base / "app.css").read_text(encoding="utf-8") == ".button { width: 118%; }\n"
     assert (output / "app.css").read_text(encoding="utf-8") == ".button { max-width: 100%; }\n"
@@ -51,7 +66,29 @@ def test_provision_creates_exact_patched_copy_without_mutating_base(tmp_path: Pa
     assert (output / ".env.example").exists()
     assert manifest["patch_sha256"] == sha256(patch.read_bytes()).hexdigest()
     assert manifest["workspace_sha256"] == workspace_digest(output)
-    assert manifest["base_revision"] == "deadbeef"
+    assert manifest["base_revision"] == revision(base)
+
+
+
+def test_provision_requires_matching_clean_git_revision(tmp_path: Path) -> None:
+    base, patch = prepare(tmp_path)
+    with pytest.raises(ProvisionError, match="does not match"):
+        provision_workspace(
+            base_workspace=base,
+            patch_file=patch,
+            target_file="app.css",
+            output_workspace=tmp_path / "wrong-revision",
+            base_revision="0" * 40,
+        )
+    (base / "dirty.txt").write_text("uncommitted", encoding="utf-8")
+    with pytest.raises(ProvisionError, match="working tree must be clean"):
+        provision_workspace(
+            base_workspace=base,
+            patch_file=patch,
+            target_file="app.css",
+            output_workspace=tmp_path / "dirty-worktree",
+            base_revision=revision(base),
+        )
 
 
 def test_provision_rejects_context_mismatch_and_cleans_output(tmp_path: Path) -> None:
@@ -95,6 +132,8 @@ def test_provision_rejects_path_traversal_and_symlinks(tmp_path: Path) -> None:
         )
     link = base / "linked.txt"
     link.symlink_to(base / "app.css")
+    subprocess.run(["git", "-C", str(base), "add", "linked.txt"], check=True)
+    subprocess.run(["git", "-C", str(base), "commit", "-qm", "add symlink fixture"], check=True)
     with pytest.raises(ProvisionError, match="symlinks"):
         provision_workspace(
             base_workspace=base,
