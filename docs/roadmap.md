@@ -5,7 +5,7 @@
 - [x] Typed response contract and deterministic mock mode
 - [x] FastAPI health/readiness and upload endpoint
 - [x] Image decoding, MIME allow-list, upload size and pixel bounds
-- [x] Unit, API, workflow, model-evaluation, and target-validation tests
+- [x] Unit, API, workflow, model-evaluation, provider-contract, and target-validation tests
 - [x] Threat model, architecture, evaluation criteria, and operations guidance
 - [x] CI pipeline for Python 3.11/3.12, Ruff, pytest, and mypy
 - [ ] Confirm CI passes on the latest commit before release
@@ -15,11 +15,11 @@
 - [x] Provider-neutral vision contract
 - [x] Opt-in OpenAI-compatible, Anthropic, and Gemini adapters
 - [x] Structured output validation and safe provider failure handling
+- [x] Mocked HTTP contract tests for each provider
 - [x] Side-by-side model comparison harness for latency and output summaries
 - [ ] Add a versioned, labelled screenshot benchmark with human-adjudicated ground truth
 - [ ] Add privacy-preserving redaction before external provider calls
 - [ ] Add retry budgets, provider rate limits, token/cost telemetry, and prompt-version tracking
-- [ ] Add contract tests with mocked HTTP responses for every provider
 
 ## Phase 2: Browser evidence
 
@@ -50,10 +50,11 @@
 
 ## Phase 5: Production operations and AWS
 
+- [x] Private encrypted S3 artifact-storage Terraform baseline with KMS, public-access blocking, TLS-only policy, and lifecycle expiry
 - [ ] OpenTelemetry traces and redacted structured logs
 - [ ] SLOs, dashboards, alerts, quotas, provider budgets, and cost attribution
-- [ ] AWS infrastructure as code, staging environment, rollback, and disaster recovery
-- [ ] Secrets Manager, least-privilege IAM, private networking, encrypted artifact storage, and lifecycle policies
+- [ ] ECS/Fargate, SQS, Step Functions approval callbacks, Secrets Manager, and CloudWatch alarms
+- [ ] GitHub OIDC deployment roles, staging environment, rollback, and disaster recovery
 - [ ] Security review, release checklist, privacy review, and incident playbooks
 
 The checked items are implemented in this repository. Unchecked items are planned and must not be represented as production-ready capabilities.
