@@ -81,7 +81,8 @@ def test_provision_creates_exact_patched_copy_without_mutating_base(tmp_path: Pa
 
 
 
-@pytest.mark.skipif(shutil.which("git") is None, reason="Git is not installed in the restricted worker image")\ndef test_provision_requires_matching_clean_git_revision(tmp_path: Path) -> None:
+@pytest.mark.skipif(shutil.which("git") is None, reason="Git is not installed in the restricted worker image")
+def test_provision_requires_matching_clean_git_revision(tmp_path: Path) -> None:
     base, patch = prepare(tmp_path)
     with pytest.raises(ProvisionError, match="does not match"):
         provision_workspace(
