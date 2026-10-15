@@ -23,6 +23,7 @@ class BrowserCaptureResult:
     viewport_height: int
     screenshot_png: bytes
     dom_tag_counts: dict[str, int]
+    dom_count_truncated: bool
     console_errors: list[str]
     page_errors: list[str]
     failed_request_count: int
@@ -98,15 +99,25 @@ async def capture_page(
             page.on("requestfailed", lambda request: failed_requests.append(True))
             await page.goto(url, wait_until="domcontentloaded", timeout=timeout_ms)
             await page.wait_for_timeout(250)
-            screenshot = await page.screenshot(type="png", full_page=True)
+            # Capture only the bounded viewport; full-page screenshots can allocate unbounded images.
+            screenshot = await page.screenshot(type="png", full_page=False, timeout=timeout_ms)
             summary = await page.locator("body").evaluate(
                 """body => {
                     const counts = {};
-                    for (const element of body.querySelectorAll('*')) {
-                        const tag = element.tagName.toLowerCase();
+                    const maxNodes = 10000;
+                    const walker = document.createTreeWalker(body, NodeFilter.SHOW_ELEMENT);
+                    let visited = 0;
+                    let truncated = false;
+                    while (walker.nextNode()) {
+                        if (visited >= maxNodes) {
+                            truncated = true;
+                            break;
+                        }
+                        const tag = walker.currentNode.tagName.toLowerCase();
                         counts[tag] = (counts[tag] || 0) + 1;
+                        visited += 1;
                     }
-                    return counts;
+                    return {counts, truncated};
                 }"""
             )
             return BrowserCaptureResult(
@@ -115,7 +126,8 @@ async def capture_page(
                 viewport_width=viewport[0],
                 viewport_height=viewport[1],
                 screenshot_png=screenshot,
-                dom_tag_counts={str(k): int(v) for k, v in summary.items()},
+                dom_tag_counts={str(k): int(v) for k, v in summary["counts"].items()},
+                dom_count_truncated=bool(summary["truncated"]),
                 console_errors=console_errors[:100],
                 page_errors=page_errors[:100],
                 failed_request_count=len(failed_requests),
