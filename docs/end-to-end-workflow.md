@@ -19,9 +19,14 @@
 - `GET /v1/debug-runs`: list recent runs.
 - `GET /v1/debug-runs/{workflow_id}`: retrieve analysis, patch proposal, test reports, and audit history.
 - `POST /v1/debug-runs/{workflow_id}/transitions`: record a legal state transition. Patch-proposed and tested states require their dedicated endpoints.
-- `POST /v1/debug-runs/{workflow_id}/patch-proposals`: store a diff only after reproduction.
+- `POST /v1/debug-runs/{workflow_id}/patch-suggestions`: ask the configured provider for a review-only diff from supplied source context.
+- `POST /v1/debug-runs/{workflow_id}/patch-proposals`: store a manually prepared diff only after reproduction.
 - `POST /v1/debug-runs/{workflow_id}/test-results`: record a test result for the exact current patch digest.
 - `POST /v1/debug-runs/{workflow_id}/browser-evidence`: capture a page and attach minimised evidence, disabled by default.
+
+## AI-assisted patch suggestions
+
+The suggestion endpoint uses the configured provider to propose a unified diff for one repository-relative target file. It validates path traversal, checks that the diff headers match the target file, and refuses multi-file diffs. It does not fetch source code from GitHub, apply the patch, execute commands, or claim tests ran. The caller supplies source context; when a real provider is enabled, that context and issue report are transmitted to the provider. Do not submit secrets or confidential source code without approval.
 
 ## Patch and test integrity
 
