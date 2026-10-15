@@ -1,6 +1,6 @@
 # Accessibility heuristics
 
-`app.accessibility.audit_page(page)` runs a small synchronous Playwright-compatible DOM audit. It checks for common issues:
+`app.accessibility.audit_page(page)` runs a small synchronous Playwright-compatible DOM audit. When browser capture is enabled, DebugLens automatically attaches this bounded report to the durable browser evidence alongside the screenshot analysis and runtime error summary. It checks for common issues:
 
 - missing document language and title;
 - missing main landmark;
