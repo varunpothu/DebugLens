@@ -4,7 +4,7 @@
 
 DebugLens turns a UI failure report into a traceable investigation. It validates screenshots, records evidence metadata, optionally calls a vision-capable model, returns structured findings, and makes clear what remains unverified. The longer-term workflow correlates screenshots with browser/runtime evidence, proposes regression tests, and prepares fixes for human review.
 
-> **Current maturity:** DebugLens has a local end-to-end investigation lifecycle with SQLite persistence, audit history, a Streamlit review dashboard, deterministic evidence/test-planning stages, optional allow-listed Playwright capture, AI-assisted and manual patch proposals, and digest-bound test-result gates. Three vision provider adapters, model comparison, CI, a demo UI, and a private S3 Terraform baseline are also included. Patch application, production-grade execution orchestration, full LLM agent orchestration, user identity/roles, production-grade isolation, and full AWS application deployment remain incomplete. This is not safe to expose as a public service.
+> **Current maturity:** DebugLens has a local end-to-end investigation lifecycle with SQLite persistence, audit history, a Streamlit review dashboard, deterministic evidence/test-planning stages, optional allow-listed Playwright capture, AI-assisted and manual patch proposals, and digest-bound test-result gates. Three vision provider adapters, model comparison, CI, a demo UI, and a private S3 Terraform baseline are also included. Patch application, production-integrated execution orchestration, full LLM agent orchestration, user identity/roles, production-grade isolation, and full AWS application deployment remain incomplete. This is not safe to expose as a public service.
 
 ## Product principles
 
