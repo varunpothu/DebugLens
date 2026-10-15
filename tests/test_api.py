@@ -342,6 +342,7 @@ def test_api_sets_conservative_security_headers() -> None:
     assert response.headers["X-Frame-Options"] == "DENY"
     assert response.headers["Referrer-Policy"] == "no-referrer"
     assert response.headers["Cache-Control"] == "no-store"
+    assert response.headers["X-Correlation-ID"]
 
 
 def test_api_rejects_declared_oversized_request_body() -> None:
@@ -353,3 +354,12 @@ def test_api_rejects_declared_oversized_request_body() -> None:
     )
     assert response.status_code == 413
     assert response.json()["detail"] == "Request body exceeds the configured limit."
+    assert response.headers["X-Content-Type-Options"] == "nosniff"
+    assert response.headers["X-Correlation-ID"]
+
+
+def test_api_does_not_reflect_unsafe_correlation_id() -> None:
+    response = client.get("/health", headers={"X-Correlation-ID": "client id with spaces"})
+    assert response.status_code == 200
+    assert response.headers["X-Correlation-ID"] != "client id with spaces"
+    assert all(char.isalnum() or char in "._-" for char in response.headers["X-Correlation-ID"])
