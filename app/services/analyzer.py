@@ -1,11 +1,12 @@
 """Analysis orchestration with explicit provider selection and a transparent mock mode."""
 from hashlib import sha256
 from io import BytesIO
+from typing import Any
 
 from PIL import Image, UnidentifiedImageError
 
 from app.config import get_settings
-from app.providers.base import ImageInput
+from app.providers.base import ImageInput, ProviderResult
 from app.providers.native_vision import AnthropicVisionProvider, GeminiVisionProvider
 from app.providers.openai_compatible import OpenAICompatibleVisionProvider
 from app.schemas import AnalysisResponse, Evidence, Finding, Severity
@@ -44,7 +45,7 @@ def _run_vision_provider(
     height: int,
     media_type: str,
     bug_report: str | None,
-):
+) -> ProviderResult:
     settings = get_settings()
     image = ImageInput(
         content=image_bytes,
@@ -54,6 +55,8 @@ def _run_vision_provider(
         height=height,
     )
     if provider == "openai_compatible":
+        if not settings.vision_api_key or not settings.vision_model:
+            raise RuntimeError("Vision provider credentials or model configuration are missing.")
         adapter = OpenAICompatibleVisionProvider(
             api_key=settings.vision_api_key,
             model=settings.vision_model,
@@ -61,12 +64,16 @@ def _run_vision_provider(
             timeout_seconds=settings.vision_timeout_seconds,
         )
     elif provider == "anthropic":
+        if not settings.anthropic_api_key or not settings.anthropic_model:
+            raise RuntimeError("Anthropic provider credentials or model configuration are missing.")
         adapter = AnthropicVisionProvider(
             api_key=settings.anthropic_api_key,
             model=settings.anthropic_model,
             timeout_seconds=settings.vision_timeout_seconds,
         )
     elif provider == "gemini":
+        if not settings.gemini_api_key or not settings.gemini_model:
+            raise RuntimeError("Gemini provider credentials or model configuration are missing.")
         adapter = GeminiVisionProvider(
             api_key=settings.gemini_api_key,
             model=settings.gemini_model,
