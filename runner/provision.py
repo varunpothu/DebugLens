@@ -97,9 +97,36 @@ def _is_excluded(relative: Path) -> bool:
     return False
 
 
+def _tracked_paths(source: Path) -> set[str]:
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(source), "ls-files", "--cached", "-z"],
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            timeout=10,
+            check=False,
+            shell=False,
+            close_fds=True,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise ProvisionError("Unable to enumerate tracked source files.") from exc
+    if result.returncode != 0:
+        raise ProvisionError("Unable to enumerate tracked source files.")
+    try:
+        paths = {entry.decode("utf-8", errors="strict") for entry in result.stdout.split(b"\\0") if entry}
+    except UnicodeDecodeError as exc:
+        raise ProvisionError("Tracked source paths must be UTF-8.") from exc
+    if not paths:
+        raise ProvisionError("Git base revision contains no tracked files.")
+    if any(PurePosixPath(path).is_absolute() or ".." in PurePosixPath(path).parts for path in paths):
+        raise ProvisionError("Git returned an unsafe tracked path.")
+    return paths
+
+
 def _copy_base(source: Path, destination: Path) -> tuple[int, int]:
     count = 0
     total = 0
+    tracked = _tracked_paths(source)
     if source.is_symlink():
         raise ProvisionError("Base workspace path must not be a symlink.")
     source = source.resolve(strict=True)
@@ -111,17 +138,24 @@ def _copy_base(source: Path, destination: Path) -> tuple[int, int]:
         relative_root = root_path.relative_to(source)
         for dirname in list(dirs):
             path = root_path / dirname
-            if path.is_symlink():
-                raise ProvisionError("Base workspace symlinks are not allowed.")
             rel = relative_root / dirname
-            if _is_excluded(rel):
+            rel_name = rel.as_posix()
+            if path.is_symlink():
+                if rel_name in tracked:
+                    raise ProvisionError("Base workspace symlinks are not allowed.")
+                dirs.remove(dirname)
+                continue
+            if _is_excluded(rel) or not any(item.startswith(rel_name + "/") for item in tracked):
                 dirs.remove(dirname)
         for filename in files:
             original = root_path / filename
             relative = relative_root / filename
+            relative_name = relative.as_posix()
             if original.is_symlink():
-                raise ProvisionError("Base workspace symlinks are not allowed.")
-            if _is_excluded(relative):
+                if relative_name in tracked:
+                    raise ProvisionError("Base workspace symlinks are not allowed.")
+                continue
+            if relative_name not in tracked or _is_excluded(relative):
                 continue
             if not original.is_file():
                 raise ProvisionError("Base workspace may contain only regular files and directories.")
@@ -232,6 +266,7 @@ def provision_workspace(
     output_workspace = output_workspace.expanduser().absolute()
     if output_workspace.exists() or output_workspace.is_symlink():
         raise ProvisionError("Output workspace must not already exist.")
+    output_workspace = output_workspace.parent.resolve(strict=False) / output_workspace.name
     if output_workspace == base_workspace or base_workspace in output_workspace.parents:
         raise ProvisionError("Output workspace must not be inside the source workspace.")
     verified_revision = verify_git_base(base_workspace, base_revision.strip())
@@ -245,7 +280,7 @@ def provision_workspace(
     output_workspace.parent.mkdir(parents=True, exist_ok=True)
     try:
         _copy_base(base_workspace, output_workspace)
-        base_digest = workspace_digest(base_workspace)
+        base_digest = workspace_digest(output_workspace)
         _apply_unified_diff(output_workspace, patch_text, target_file)
         final_digest = workspace_digest(output_workspace)
     except Exception:
