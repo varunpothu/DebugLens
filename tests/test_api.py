@@ -363,3 +363,15 @@ def test_api_does_not_reflect_unsafe_correlation_id() -> None:
     assert response.status_code == 200
     assert response.headers["X-Correlation-ID"] != "client id with spaces"
     assert all(char.isalnum() or char in "._-" for char in response.headers["X-Correlation-ID"])
+
+
+def test_browser_evidence_is_blocked_outside_local_development(monkeypatch) -> None:
+    monkeypatch.setattr(main.settings, "browser_enabled", True)
+    monkeypatch.setattr(main.settings, "app_env", "production")
+    monkeypatch.setattr(main.settings, "browser_allowed_hosts", "example.org")
+    response = client.post(
+        "/v1/debug-runs/not-a-real-run/browser-evidence",
+        json={"target_url": "https://example.org/", "actor": "reviewer"},
+    )
+    assert response.status_code == 503
+    assert "isolated browser worker" in response.json()["detail"]
