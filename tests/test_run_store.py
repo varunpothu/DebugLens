@@ -5,10 +5,12 @@ import pytest
 from app.config import get_settings
 from app.run_store import (
     attach_browser_evidence,
+    create_patch_proposal,
     create_run,
     get_run,
     initialise_store,
     list_runs,
+    record_test_result,
     transition_run,
 )
 from app.workflow import WorkflowState
