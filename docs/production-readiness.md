@@ -7,6 +7,7 @@
 - API supports a configured bearer token; production startup refuses to run without `API_ACCESS_TOKEN`.
 - Uploads have content-type, byte-size, image-format, and pixel-count checks.
 - Common sensitive text patterns are redacted before outbound vision-provider calls.
+- External vision-provider image transfer is denied by default because screenshot pixels are not redacted; the operator must explicitly set `ALLOW_UNREDACTED_SCREENSHOTS=true` to opt in. This is not a substitute for OCR redaction or privacy review.
 - Browser capture is disabled by default and requires an exact hostname allow-list.
 - Proposed patches remain review-only; test reports are bound to patch/workspace digests.
 - The isolated test worker uses a non-root user, read-only workspace, no network, dropped capabilities, no-new-privileges, and CPU/memory/PID/time/output bounds.
@@ -27,7 +28,7 @@ These are partial safeguards. They do not provide multi-user identity, RBAC, ten
 ### Data protection
 
 - [ ] Review provider retention, training, region, and contractual settings.
-- [ ] Add OCR-assisted redaction or a manual review gate for screenshots before external transfer.
+- [ ] Add OCR-assisted redaction or a manual review gate for screenshots before external transfer; the current explicit opt-in is only a fail-closed consent gate.
 - [ ] Define retention/deletion for database rows, logs, screenshots, browser artifacts, and backups.
 - [ ] Verify logs never contain tokens, raw screenshots, full prompts, or unredacted issue/context text.
 - [ ] Test redaction against obfuscated values and maintain a versioned synthetic test corpus.
