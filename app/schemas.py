@@ -78,3 +78,26 @@ class BrowserCaptureRequest(BaseModel):
     actor: str = Field(min_length=1, max_length=120)
     viewport_width: int = Field(default=1440, ge=320, le=3840)
     viewport_height: int = Field(default=900, ge=320, le=2160)
+
+
+
+class PatchProposalRequest(BaseModel):
+    """Human-authored patch proposal. DebugLens stores it but never applies it."""
+
+    model_config = ConfigDict(extra="forbid")
+    patch_diff: str = Field(min_length=1, max_length=200000)
+    rationale: str = Field(min_length=1, max_length=3000)
+    risk: str = Field(pattern="^(low|medium|high|critical)$")
+    rollback_plan: str = Field(min_length=1, max_length=2000)
+    actor: str = Field(min_length=1, max_length=120)
+
+
+class TestResultRequest(BaseModel):
+    """Self-reported test outcome tied to the exact proposed patch digest."""
+
+    model_config = ConfigDict(extra="forbid")
+    patch_sha256: str = Field(pattern="^[a-f0-9]{64}$")
+    outcome: str = Field(pattern="^(passed|failed)$")
+    command: str = Field(min_length=1, max_length=500)
+    summary: str = Field(min_length=1, max_length=2000)
+    actor: str = Field(min_length=1, max_length=120)
