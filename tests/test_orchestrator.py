@@ -72,6 +72,25 @@ def test_execute_uses_network_disabled_read_only_docker(monkeypatch: pytest.Monk
     assert result["outcome"] == "passed"
 
 
+def test_execute_rejects_worker_digest_or_suite_mismatch(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    workspace = tmp_path / "reviewed"
+    workspace.mkdir()
+    monkeypatch.setattr(orchestrate, "workspace_digest", lambda root: "a" * 64)
+    bad_result = worker_result()
+    bad_result["workspace_sha256"] = "c" * 64
+    monkeypatch.setattr(
+        orchestrate.subprocess,
+        "run",
+        lambda command, **kwargs: subprocess.CompletedProcess(
+            command, 0, stdout=json.dumps(bad_result).encode("utf-8")
+        ),
+    )
+    result, exit_code = orchestrate.execute(workspace=workspace, suite="pytest", image="worker:test")
+    assert exit_code == 1
+    assert result["outcome"] == "failed"
+    assert "digest" in str(result["output"])
+
+
 def test_submit_result_rejects_remote_plain_http() -> None:
     with pytest.raises(ValueError, match="HTTPS"):
         orchestrate.submit_result(
