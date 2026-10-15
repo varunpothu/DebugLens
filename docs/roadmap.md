@@ -40,7 +40,8 @@
 - [x] Human-authored and provider-assisted patch proposals with digest, rationale, risk, and rollback plan
 - [x] Test-result records tied to the exact patch digest
 - [x] Gate verification on a passing report for the current patch digest
-- [ ] Implement isolated test execution and independently captured test logs
+- [x] Add a standalone allowlisted test-worker prototype with timeout, output cap, and workspace snapshot digest
+- [ ] Integrate worker results into the API and independently persist trusted execution evidence
 - [x] Implement bounded provider-backed patch suggestion from user-supplied source context without automatic application
 - [ ] Add bounded LLM specialist agents for diagnosis and test planning
 - [ ] Add durable orchestration, idempotency, retries, timeout handling, cancellation, and dead-letter queue
