@@ -30,7 +30,6 @@ EXCLUDED_FILES = {
     ".env", ".env.local", ".env.development", ".env.production",
     "debuglens.db", "debuglens-test.db", "test.db",
 }
-EXCLUDED_SUFFIXES = {".pem", ".key", ".p12", ".pfx", ".sqlite", ".sqlite3", ".db"}
 EXCLUDED_NAMES = {".aws", ".ssh", ".azure", ".gnupg"}
 
 
@@ -126,15 +125,15 @@ def _tracked_paths(source: Path) -> set[str]:
 def _copy_base(source: Path, destination: Path) -> tuple[int, int]:
     count = 0
     total = 0
+    if source.is_symlink():
+        raise ProvisionError("Base workspace path must not be a symlink.")
+    source = source.resolve(strict=True)
     tracked = _tracked_paths(source)
     tracked_directories = {
         "/".join(PurePosixPath(item).parts[:index])
         for item in tracked
         for index in range(1, len(PurePosixPath(item).parts))
     }
-    if source.is_symlink():
-        raise ProvisionError("Base workspace path must not be a symlink.")
-    source = source.resolve(strict=True)
     if not source.is_dir():
         raise ProvisionError("Base workspace must be an existing real directory.")
     destination.mkdir(parents=True, exist_ok=False)
