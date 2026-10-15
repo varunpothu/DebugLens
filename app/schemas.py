@@ -57,3 +57,13 @@ class ReadinessResponse(BaseModel):
     app: str
     environment: str
     analysis_provider: str
+
+
+
+class TransitionRequest(BaseModel):
+    """Human-attributed workflow transition request."""
+
+    model_config = ConfigDict(extra="forbid")
+    target: str = Field(min_length=1, max_length=40)
+    actor: str = Field(min_length=1, max_length=120)
+    reason: str = Field(min_length=1, max_length=1000)
