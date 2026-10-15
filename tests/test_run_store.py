@@ -1,7 +1,14 @@
 import pytest
 
 from app.config import get_settings
-from app.run_store import create_run, get_run, initialise_store, list_runs, transition_run
+from app.run_store import (
+    attach_browser_evidence,
+    create_run,
+    get_run,
+    initialise_store,
+    list_runs,
+    transition_run,
+)
 from app.workflow import WorkflowState
 
 
@@ -64,6 +71,18 @@ def test_transition_requires_legal_state_and_audit_reason() -> None:
     assert updated["state"] == WorkflowState.REPRODUCED.value
     assert updated["events"][-1]["actor"] == "reviewer"
     assert updated["human_review_required"] is True
+
+
+def test_browser_evidence_is_persisted_without_raw_screenshot() -> None:
+    run = create_run(bug_report="Button misaligned", screenshot_sha256="a" * 64, analysis=sample_analysis())
+    updated = attach_browser_evidence(
+        run["workflow_id"],
+        actor="reviewer",
+        evidence={"final_url": "https://demo.example.org/", "raw_screenshot_retained": False},
+    )
+    assert updated["browser_evidence"]["raw_screenshot_retained"] is False
+    assert updated["events"][-1]["event_type"] == "browser_evidence_attached"
+    assert updated["events"][-1]["actor"] == "reviewer"
 
 
 def test_missing_run_raises_key_error() -> None:
