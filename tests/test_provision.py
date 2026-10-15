@@ -48,6 +48,11 @@ def prepare(tmp_path: Path) -> tuple[Path, Path]:
 def stub_git_verification_when_git_is_unavailable(monkeypatch: pytest.MonkeyPatch) -> None:
     if shutil.which("git") is None:
         monkeypatch.setattr(provision_module, "verify_git_base", lambda source, expected: expected)
+        monkeypatch.setattr(
+            provision_module,
+            "_tracked_paths",
+            lambda source: {path.relative_to(source).as_posix() for path in source.rglob("*") if path.is_file()},
+        )
 
 
 def revision(base: Path) -> str:
