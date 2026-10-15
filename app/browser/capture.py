@@ -12,6 +12,8 @@ from typing import Any
 from dataclasses import dataclass
 from urllib.parse import urlparse
 
+from app.accessibility import audit_page
+
 
 class UnsafeTargetError(ValueError):
     """Raised when a browser target or subresource is outside the approved scope."""
@@ -29,6 +31,7 @@ class BrowserCaptureResult:
     console_errors: list[str]
     page_errors: list[str]
     failed_request_count: int
+    accessibility_report: dict[str, Any]
 
 
 def _assert_public_dns_resolution(hostname: str) -> None:
@@ -153,6 +156,7 @@ async def capture_page(
                     return {counts, truncated};
                 }"""
             )
+            accessibility_report = audit_page(page)
             return BrowserCaptureResult(
                 final_url=page.url.split("?")[0].split("#")[0],
                 page_title=(await page.title())[:300],
@@ -164,6 +168,7 @@ async def capture_page(
                 console_errors=console_errors[:100],
                 page_errors=page_errors[:100],
                 failed_request_count=len(failed_requests),
+                accessibility_report=accessibility_report,
             )
         finally:
             await browser.close()
