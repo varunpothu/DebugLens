@@ -59,8 +59,14 @@ def _parse_suggestion(raw_text: str, target_file: str, provider: str, model: str
     rationale = payload.get("rationale")
     risk = payload.get("risk")
     rollback_plan = payload.get("rollback_plan")
-    if not all(isinstance(item, str) and item.strip() for item in (patch_diff, rationale, risk, rollback_plan)):
-        raise ValueError("Patch response is missing required non-empty fields.")
+    if not isinstance(patch_diff, str) or not patch_diff.strip():
+        raise ValueError("Patch response is missing a non-empty patch_diff string.")
+    if not isinstance(rationale, str) or not rationale.strip():
+        raise ValueError("Patch response is missing a non-empty rationale string.")
+    if not isinstance(risk, str) or not risk.strip():
+        raise ValueError("Patch response is missing a non-empty risk string.")
+    if not isinstance(rollback_plan, str) or not rollback_plan.strip():
+        raise ValueError("Patch response is missing a non-empty rollback_plan string.")
     if risk not in {"low", "medium", "high", "critical"}:
         raise ValueError("Patch response has an invalid risk value.")
     diff_lines = patch_diff.splitlines()
