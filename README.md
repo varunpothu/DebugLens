@@ -4,7 +4,7 @@
 
 DebugLens turns a UI failure report into a traceable investigation. It validates screenshots, records evidence metadata, optionally calls a vision-capable model, returns structured findings, and makes clear what remains unverified. The longer-term workflow correlates screenshots with browser/runtime evidence, proposes regression tests, and prepares fixes for human review.
 
-> **Current maturity:** DebugLens now has a local end-to-end investigation lifecycle with SQLite persistence, audit history, a Streamlit review dashboard, deterministic evidence/test-planning stages, optional allow-listed Playwright capture, human-authored patch proposals, and digest-bound test-result gates. Three vision provider adapters, model comparison, CI, and a private S3 Terraform baseline are also included. Patch application, isolated automated test execution, full LLM agent orchestration, authentication, production-grade isolation, and full AWS application deployment remain incomplete. This is not safe to expose as a public service.
+> **Current maturity:** DebugLens has a local end-to-end investigation lifecycle with SQLite persistence, audit history, a Streamlit review dashboard, deterministic evidence/test-planning stages, optional allow-listed Playwright capture, AI-assisted and manual patch proposals, and digest-bound test-result gates. Three vision provider adapters, model comparison, CI, a demo UI, and a private S3 Terraform baseline are also included. Patch application, isolated automated test execution, full LLM agent orchestration, user identity/roles, production-grade isolation, and full AWS application deployment remain incomplete. This is not safe to expose as a public service.
 
 ## Product principles
 
@@ -139,11 +139,12 @@ The response includes a SHA-256 digest, dimensions, findings, evidence, confiden
 - `GET /v1/debug-runs`: list recent runs.
 - `GET /v1/debug-runs/{workflow_id}`: retrieve analysis and audit history.
 - `POST /v1/debug-runs/{workflow_id}/transitions`: record a legal state transition with actor and reason.
-- `POST /v1/debug-runs/{workflow_id}/patch-proposals`: save a proposed diff and its SHA-256 digest without applying it.
+- `POST /v1/debug-runs/{workflow_id}/patch-suggestions`: generate a review-only diff from source context using the configured provider; source context is sent to that provider.
+- `POST /v1/debug-runs/{workflow_id}/patch-proposals`: save a manually prepared diff and its SHA-256 digest without applying it.
 - `POST /v1/debug-runs/{workflow_id}/test-results`: record a reviewer-reported test outcome for the exact patch digest.
 - `POST /v1/debug-runs/{workflow_id}/browser-evidence`: optionally capture an allow-listed test page and attach minimised runtime evidence.
 
-The SQLite database defaults to `./data/debuglens.db`; override it with `DATABASE_PATH`. The Compose file mounts a writable volume at `/data`. Only screenshot digests and analysis results are retained by the run store, not uploaded screenshot bytes. Patch proposals are stored as text and bound to a SHA-256 digest. Test results are reviewer-reported and are not executed by the application. Verification requires a passing result for the current patch digest. The optional browser endpoint is disabled by default. Set `BROWSER_ENABLED=true` and an exact `BROWSER_ALLOWED_HOSTS` list only in an isolated test environment with network egress controls.
+The SQLite database defaults to `./data/debuglens.db`; override it with `DATABASE_PATH`. The Compose file mounts a writable volume at `/data`. Only screenshot digests and analysis results are retained by the run store, not uploaded screenshot bytes. Patch proposals, including model-generated suggestions, are stored as text and bound to a SHA-256 digest. Model-generated suggestions require an explicitly configured provider and should be reviewed as untrusted code. Test results are reviewer-reported and are not executed by the application. Verification requires a passing result for the current patch digest. The optional browser endpoint is disabled by default. Set `BROWSER_ENABLED=true` and an exact `BROWSER_ALLOWED_HOSTS` list only in an isolated test environment with network egress controls.
 
 **Security limitation:** a configurable bearer token is available, and startup refuses production mode without one. This is only a basic shared-token gate, not user identity, role-based authorisation, rate limiting or tenant isolation. Keep the API behind a trusted boundary and do not expose it publicly or process confidential data.
 
