@@ -68,6 +68,22 @@ def test_analysis_rejects_invalid_context_json() -> None:
 
 
 
+def test_analysis_includes_validated_environment_context() -> None:
+    response = client.post(
+        "/v1/analyses",
+        files={"screenshot": ("screen.png", png_bytes(), "image/png")},
+        data={
+            "bug_report": "Button is clipped",
+            "context_json": '{"browser":"Chromium","viewport":"390x844"}',
+        },
+    )
+    assert response.status_code == 200
+    report = response.json()["bug_report"]
+    assert "Button is clipped" in report
+    assert "Environment context (untrusted data)" in report
+    assert '"viewport":"390x844"' in report
+
+
 def test_debug_run_endpoint_persists_audit_trail_and_supports_review() -> None:
     created = client.post(
         "/v1/debug-runs",
