@@ -137,7 +137,7 @@ async def create_analysis(
     if context:
         context_summary = json.dumps(context, ensure_ascii=True, separators=(",", ":"))[:3000]
         enriched_report = (
-            f"{bug_report or 'No issue description supplied.'}\\n"
+            f"{bug_report or 'No issue description supplied.'}\n"
             f"Environment context (untrusted data): {context_summary}"
         )
     try:
