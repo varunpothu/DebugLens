@@ -19,6 +19,7 @@ from app.schemas import (
     AnalysisResponse,
     BrowserCaptureRequest,
     PatchProposalRequest,
+    PatchSuggestionRequest,
     ReadinessResponse,
     TestResultRequest,
     TransitionRequest,
@@ -36,6 +37,7 @@ from app.run_store import (
 from app.workflow import WorkflowState
 from app.browser.capture import UnsafeTargetError, capture_page
 from app.services.analyzer import InvalidImageError, analyse_screenshot
+from app.patch_suggester import suggest_patch
 
 settings = get_settings()
 logging.basicConfig(level=settings.log_level.upper())
@@ -310,6 +312,50 @@ def propose_patch(workflow_id: str, request: PatchProposalRequest) -> dict:
             rationale=request.rationale,
             risk=request.risk,
             rollback_plan=request.rollback_plan,
+            actor=request.actor,
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Debugging run not found.") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@app.post("/v1/debug-runs/{workflow_id}/patch-suggestions")
+def generate_patch_suggestion(workflow_id: str, request: PatchSuggestionRequest) -> dict:
+    """Generate a review-only patch suggestion from supplied source context."""
+    try:
+        run = get_run(workflow_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Debugging run not found.") from exc
+    if run["state"] not in {WorkflowState.REPRODUCED.value, WorkflowState.PATCH_PROPOSED.value}:
+        raise HTTPException(
+            status_code=409,
+            detail="A patch suggestion is only allowed after reproduction or during patch revision.",
+        )
+    try:
+        suggestion = suggest_patch(
+            settings=settings,
+            target_file=request.target_file,
+            source_context=request.source_context,
+            bug_report=run.get("bug_report"),
+            findings=run["analysis"].get("findings", []),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        logger.warning("Patch suggestion provider unavailable")
+        raise HTTPException(
+            status_code=503,
+            detail="Patch suggestion failed or the configured provider is unavailable.",
+        ) from exc
+    rationale = f"AI-assisted suggestion from {suggestion.provider}/{suggestion.model}. {suggestion.rationale}"
+    try:
+        return create_patch_proposal(
+            workflow_id,
+            patch_diff=suggestion.patch_diff,
+            rationale=rationale,
+            risk=suggestion.risk,
+            rollback_plan=suggestion.rollback_plan,
             actor=request.actor,
         )
     except KeyError as exc:
