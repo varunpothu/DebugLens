@@ -54,7 +54,7 @@ Planned: sandboxed tests -> proposed patch -> human verification
 - app/: FastAPI API, typed contracts, multimodal adapters, deterministic investigation stages, evaluation harness, SQLite run store, workflow state machine, optional browser capture, visual regression metrics, and static accessibility heuristics.
 - tests/: API, image validation, model comparison and workflow transition tests.
 - frontend/: optional Streamlit upload client.
-- docs/: architecture, agent workflow, threat model, evaluation, operations, isolated-worker contract, visual regression, accessibility, provider-input redaction guides, and roadmap.
+- docs/: architecture, agent workflow, threat model, evaluation, operations, isolated-worker contract, visual regression, accessibility, provider-input redaction, production-readiness guides, and roadmap.
 - runner/: allowlisted test worker, Docker orchestrator, Git-verified workspace provisioner, and durable local execution queue.
 - .github/workflows/: CI quality gates.
 - examples/demo-ui/: intentionally broken and fixed synthetic storefront for reproducible demos.
