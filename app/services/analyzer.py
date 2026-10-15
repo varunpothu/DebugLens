@@ -1,14 +1,12 @@
-"""Analysis provider abstraction and deterministic local implementation.
-
-Mock mode deliberately does not claim to interpret image pixels. It returns a transparent
-baseline and demonstrates the response contract until a reviewed vision adapter is configured.
-"""
-
+"""Analysis orchestration with explicit provider selection and a transparent mock mode."""
 from hashlib import sha256
 from io import BytesIO
 
 from PIL import Image, UnidentifiedImageError
 
+from app.config import get_settings
+from app.providers.base import ImageInput
+from app.providers.openai_compatible import OpenAICompatibleVisionProvider
 from app.schemas import AnalysisResponse, Evidence, Finding, Severity
 
 
@@ -16,13 +14,14 @@ class InvalidImageError(ValueError):
     """Raised when uploaded bytes are not a valid supported image."""
 
 
-def inspect_image(image_bytes: bytes) -> tuple[str, int, int]:
-    """Decode an image safely and return its digest and dimensions."""
+def inspect_image(image_bytes: bytes) -> tuple[str, int, int, str]:
+    """Decode an image safely and return its digest, dimensions, and normalised MIME type."""
     if not image_bytes:
         raise InvalidImageError("The uploaded image is empty.")
     try:
         with Image.open(BytesIO(image_bytes)) as image:
-            if image.format not in {"PNG", "JPEG", "WEBP"}:
+            image_format = image.format
+            if image_format not in {"PNG", "JPEG", "WEBP"}:
                 raise InvalidImageError("Supported image formats are PNG, JPEG, and WEBP.")
             image.verify()
         with Image.open(BytesIO(image_bytes)) as image:
@@ -31,7 +30,8 @@ def inspect_image(image_bytes: bytes) -> tuple[str, int, int]:
                 raise InvalidImageError("Image dimensions are invalid or exceed the pixel limit.")
     except (UnidentifiedImageError, OSError) as exc:
         raise InvalidImageError("The upload is not a valid image.") from exc
-    return sha256(image_bytes).hexdigest(), width, height
+    media_type = {"PNG": "image/png", "JPEG": "image/jpeg", "WEBP": "image/webp"}[image_format]
+    return sha256(image_bytes).hexdigest(), width, height, media_type
 
 
 def analyse_screenshot(
@@ -39,39 +39,61 @@ def analyse_screenshot(
     bug_report: str | None,
     provider: str = "mock",
 ) -> AnalysisResponse:
-    """Create a safe baseline analysis; real providers must implement this contract explicitly."""
-    digest, width, height = inspect_image(image_bytes)
-    if provider != "mock":
-        raise RuntimeError(
-            f"Provider '{provider}' is not installed. Configure an explicit reviewed adapter."
+    """Validate evidence, call the explicitly selected provider, and return a typed result."""
+    digest, width, height, media_type = inspect_image(image_bytes)
+    if provider == "mock":
+        findings = [
+            Finding(
+                title="Visual inspection required",
+                severity=Severity.INFO,
+                confidence=0.0,
+                category="analysis_limit",
+                summary=(
+                    "The image was validated and fingerprinted, but mock mode does not inspect "
+                    "visual content. No defect has been confirmed. Configure an approved vision "
+                    "provider or attach browser/runtime evidence to continue the investigation."
+                ),
+                evidence=[
+                    Evidence(
+                        source="upload_validator",
+                        description=f"Decoded image successfully ({width}x{height}); SHA-256 recorded.",
+                        observed=True,
+                    )
+                ],
+                hypotheses=[],
+                recommended_checks=[
+                    "Reproduce the issue at the reported viewport and browser version.",
+                    "Capture console errors, failed network requests, and relevant DOM state.",
+                    "Compare the screenshot against an approved baseline if one exists.",
+                ],
+            )
+        ]
+        provider_version = "baseline-1"
+    elif provider == "openai_compatible":
+        settings = get_settings()
+        if not settings.vision_api_key or not settings.vision_model:
+            raise RuntimeError("Vision provider credentials or model configuration are missing.")
+        adapter = OpenAICompatibleVisionProvider(
+            api_key=settings.vision_api_key,
+            model=settings.vision_model,
+            base_url=settings.vision_base_url,
+            timeout_seconds=settings.vision_timeout_seconds,
         )
-
-    findings = [
-        Finding(
-            title="Visual inspection required",
-            severity=Severity.INFO,
-            confidence=0.0,
-            category="analysis_limit",
-            summary=(
-                "The image was validated and fingerprinted, but mock mode does not inspect "
-                "visual content. No defect has been confirmed. Connect an approved vision "
-                "provider or attach browser/runtime evidence to continue the investigation."
+        result = adapter.analyse(
+            ImageInput(
+                content=image_bytes,
+                media_type=media_type,
+                sha256=digest,
+                width=width,
+                height=height,
             ),
-            evidence=[
-                Evidence(
-                    source="upload_validator",
-                    description=f"Decoded image successfully ({width}x{height}); SHA-256 recorded.",
-                    observed=True,
-                )
-            ],
-            hypotheses=[],
-            recommended_checks=[
-                "Reproduce the issue at the reported viewport and browser version.",
-                "Capture console errors, failed network requests, and relevant DOM state.",
-                "Compare the screenshot against an approved baseline if one exists.",
-            ],
+            bug_report,
         )
-    ]
+        findings = result.findings
+        provider_version = result.model
+    else:
+        raise RuntimeError(f"Provider '{provider}' is not supported.")
+
     plan = [
         "Confirm the expected behaviour and exact reproduction steps.",
         "Record browser, operating system, viewport, device scale factor, and build identifier.",
@@ -79,18 +101,21 @@ def analyse_screenshot(
         "Reproduce in an isolated test environment and preserve a minimal failing case.",
         "After diagnosis, add a regression test before proposing a repair.",
     ]
+    limitations = [
+        "Screenshot-only analysis cannot establish runtime or DOM root causes without additional evidence.",
+        "No browser automation, code modification, or execution was performed.",
+        "Findings require human review and additional evidence before action.",
+    ]
+    if provider == "mock":
+        limitations.insert(0, "Mock provider does not perform visual reasoning or infer defects from pixels.")
     return AnalysisResponse(
-        provider="mock",
-        provider_version="baseline-1",
+        provider=provider,
+        provider_version=provider_version,
         screenshot_sha256=digest,
         screenshot_width=width,
         screenshot_height=height,
         bug_report=bug_report,
         findings=findings,
         test_plan=plan,
-        limitations=[
-            "Mock provider does not perform visual reasoning or infer defects from pixels.",
-            "No browser automation, code modification, or execution was performed.",
-            "Findings require human review and additional evidence before action.",
-        ],
+        limitations=limitations,
     )
