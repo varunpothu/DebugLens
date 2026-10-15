@@ -456,6 +456,10 @@ def main() -> int:
     cancel.add_argument("job_id")
     listing = sub.add_parser("list", help="List recent jobs")
     listing.add_argument("--limit", type=int, default=20)
+    dead = sub.add_parser("dead-letter", help="List exhausted infrastructure jobs")
+    dead.add_argument("--limit", type=int, default=20)
+    replay = sub.add_parser("replay", help="Requeue a dead-lettered job for operator replay")
+    replay.add_argument("job_id")
     worker = sub.add_parser("worker", help="Run queue worker(s)")
     worker.add_argument("--concurrency", type=int, default=1)
     worker.add_argument("--once", action="store_true", help="Process at most one job then exit")
@@ -469,6 +473,10 @@ def main() -> int:
             print(json.dumps(request_cancel(args.job_id), indent=2, sort_keys=True))
         elif args.command == "list":
             print(json.dumps(list_jobs(args.limit), indent=2, sort_keys=True))
+        elif args.command == "dead-letter":
+            print(json.dumps(list_dead_letters(args.limit), indent=2, sort_keys=True))
+        elif args.command == "replay":
+            print(json.dumps(replay_dead_letter(args.job_id), indent=2, sort_keys=True))
         elif args.command == "worker":
             if not 1 <= args.concurrency <= 16:
                 raise ValueError("concurrency must be between 1 and 16.")
