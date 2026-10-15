@@ -5,7 +5,7 @@ The optional Playwright collector captures a viewport-sized screenshot, page tit
 ## Guardrails
 
 - Configure exact approved hostnames; no wildcard suffix matching.
-- Reject URL credentials, non-HTTP schemes, IP-literal targets, and private/loopback/link-local IPs.
+- Reject URL credentials, non-HTTP schemes, IP-literal targets, non-default ports, and private/loopback/link-local IP literals.
 - Intercept subresource requests and reject hosts outside the allow-list.
 - Permit only GET and HEAD requests, block downloads and service workers, and apply navigation timeouts.
 - Run in a disposable container with egress firewall rules. Application-level host validation alone cannot fully prevent DNS rebinding or all network-layer SSRF.
