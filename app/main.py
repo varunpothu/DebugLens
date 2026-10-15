@@ -47,11 +47,16 @@ logging.basicConfig(level=settings.log_level.upper())
 logger = logging.getLogger("debuglens")
 
 
+def validate_startup_configuration() -> None:
+    """Fail closed when production is configured with a missing or weak shared token."""
+    if settings.app_env.lower() in {"prod", "production"} and len(settings.api_access_token.strip()) < 32:
+        raise RuntimeError("API_ACCESS_TOKEN must contain at least 32 non-whitespace characters in production.")
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     logger.info("DebugLens starting; provider=%s", settings.analysis_provider)
-    if settings.app_env.lower() in {"prod", "production"} and not settings.api_access_token:
-        raise RuntimeError("API_ACCESS_TOKEN must be configured in production.")
+    validate_startup_configuration()
     initialise_store()
     yield
     logger.info("DebugLens shutting down")

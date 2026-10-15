@@ -4,7 +4,7 @@
 
 ## Implemented local controls
 
-- API supports a configured bearer token; production startup refuses to run without `API_ACCESS_TOKEN`.
+- API supports a configured shared bearer token; production startup refuses tokens shorter than 32 non-whitespace characters. This is still not per-user identity, RBAC, or tenant isolation.
 - Uploads have content-type, byte-size, image-format, and pixel-count checks; an app-level guard rejects oversized declared `Content-Length` bodies.
 - API responses add `nosniff`, frame-denial, no-referrer, and no-store headers. The body guard does not replace streaming limits at a reverse proxy and does not independently cap chunked requests without `Content-Length`.
 - A dry-run-first CLI can delete old terminal workflows and related local SQLite records, with an aggregate retention audit event. It does not delete S3 objects, backups, logs, provider-side copies, or containers.
