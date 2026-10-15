@@ -11,7 +11,6 @@ import json
 import os
 import re
 import shutil
-import tempfile
 from pathlib import Path, PurePosixPath
 from typing import Any
 
