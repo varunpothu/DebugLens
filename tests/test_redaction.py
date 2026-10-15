@@ -1,4 +1,10 @@
+from io import BytesIO
+
+from PIL import Image
+
+from app.providers.base import ProviderResult
 from app.redaction import redact_sensitive_text
+from app.services import analyzer
 
 
 def test_redacts_email_and_personal_identifiers() -> None:
@@ -47,3 +53,31 @@ def test_redacts_private_key_block() -> None:
     assert result is not None
     assert "very-secret" not in result
     assert "BEGIN PRIVATE KEY" not in result
+
+
+def test_provider_receives_redacted_text(monkeypatch) -> None:
+    stream = BytesIO()
+    Image.new("RGB", (8, 8), "white").save(stream, format="PNG")
+    captured: dict[str, str | None] = {}
+
+    def fake_provider(
+        provider: str,
+        image_bytes: bytes,
+        digest: str,
+        width: int,
+        height: int,
+        media_type: str,
+        bug_report: str | None,
+    ) -> ProviderResult:
+        captured["bug_report"] = bug_report
+        return ProviderResult(provider=provider, model="test-model", findings=[])
+
+    monkeypatch.setattr(analyzer, "_run_vision_provider", fake_provider)
+    analyzer.analyse_screenshot(
+        stream.getvalue(),
+        "Please contact alex@example.com; password=secret-value",
+        provider="openai_compatible",
+    )
+    assert "alex@example.com" not in (captured["bug_report"] or "")
+    assert "secret-value" not in (captured["bug_report"] or "")
+    assert "[REDACTED]" in (captured["bug_report"] or "")
