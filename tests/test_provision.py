@@ -101,7 +101,7 @@ def test_provision_rejects_context_mismatch_and_cleans_output(tmp_path: Path) ->
             patch_file=patch,
             target_file="app.css",
             output_workspace=output,
-            base_revision="deadbeef",
+            base_revision=revision(base),
         )
     assert not output.exists()
 
