@@ -12,3 +12,14 @@ output "artifact_kms_key_arn" {
   description = "KMS key ARN used for server-side encryption."
   value       = aws_kms_key.artifacts.arn
 }
+
+
+output "api_task_role_arn" {
+  description = "Least-privilege ECS task role for API artifact access; not attached to a service by this module."
+  value       = aws_iam_role.api.arn
+}
+
+output "worker_task_role_arn" {
+  description = "Separate least-privilege ECS task role for worker artifact access; not attached to a service by this module."
+  value       = aws_iam_role.worker.arn
+}
