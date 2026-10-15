@@ -112,7 +112,7 @@ def _tracked_paths(source: Path) -> set[str]:
     if result.returncode != 0:
         raise ProvisionError("Unable to enumerate tracked source files.")
     try:
-        paths = {entry.decode("utf-8", errors="strict") for entry in result.stdout.split(b"\\0") if entry}
+        paths = {entry.decode("utf-8", errors="strict") for entry in result.stdout.split(bytes([0])) if entry}
     except UnicodeDecodeError as exc:
         raise ProvisionError("Tracked source paths must be UTF-8.") from exc
     if not paths:
