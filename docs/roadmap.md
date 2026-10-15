@@ -47,7 +47,7 @@
 - [x] Provision a reviewed single-file text patch into a disposable copy with base/patch/workspace digests and manifest verification
 - [x] Verify the supplied full base commit SHA against Git HEAD and reject dirty/untracked working trees
 - [x] Add durable local SQLite queue with idempotency, worker leases, bounded retries, cancellation, and global concurrency cap
-- [ ] Add independent container cleanup monitoring
+- [x] Name each Docker worker and attempt explicit cleanup after an orchestrator timeout; warn if cleanup cannot be confirmed\n- [ ] Add independent container cleanup monitoring and orphan-worker reconciliation
 - [x] Add dead-letter tracking, inspection, and explicit operator replay for exhausted infrastructure failures
 - [x] Implement bounded provider-backed patch suggestion from user-supplied source context without automatic application
 - [ ] Add bounded LLM specialist agents for diagnosis and test planning
