@@ -6,7 +6,8 @@ DebugLens applies a deterministic text-pattern redaction pass to the issue/conte
 
 The helper in `app/redaction.py` masks common patterns for:
 - Email addresses and common UK National Insurance number shapes.
-- Values attached to labels such as `password`, `secret`, `api_key`, `access_token`, and `authorization`.
+- Values attached to labels such as `password`, `secret`, `api_key`, `access_token`, and `authorization`, including quoted values containing spaces.
+- Entire values for structured fields whose keys identify sensitive data, such as `password`, `user_email`, `access_token`, or `card_number`.
 - Bearer tokens, common GitHub/GitLab tokens, AWS access-key IDs, JWT-shaped strings, private-key blocks, and payment-card-shaped digit sequences.
 
 The pass runs in `app/services/analyzer.py` immediately before vision analysis and recursively redacts string values in the JSON payload built by `app/patch_suggester.py` before patch-suggestion requests. The locally returned analysis retains the user's original issue text; this feature is intended to reduce outbound disclosure, not to rewrite local records.
