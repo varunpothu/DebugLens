@@ -5,10 +5,10 @@ The optional Playwright collector captures a viewport-sized screenshot, page tit
 ## Guardrails
 
 - Configure exact approved hostnames; no wildcard suffix matching.
-- Reject URL credentials, non-HTTP schemes, IP-literal targets, non-default ports, and private/loopback/link-local IP literals.
+- Reject URL credentials, non-HTTP schemes, IP-literal targets, non-default ports, and private/loopback/link-local IP literals; preflight DNS answers and reject any hostname resolving to a non-global address.
 - Intercept subresource requests and reject hosts outside the allow-list.
 - Permit only GET and HEAD requests, block downloads and service workers, and apply navigation timeouts.
-- Run in a disposable container with egress firewall rules. Application-level host validation alone cannot fully prevent DNS rebinding or all network-layer SSRF.
+- Run in a disposable container with egress firewall rules. DNS preflight is defence in depth, not a complete DNS-rebinding defence; browser-level resolution races still require network-layer SSRF controls.
 - Do not attach production cookies, cloud credentials, local browser profiles, or unrestricted filesystem access.
 - Keep screenshots synthetic or redacted; define retention and deletion rules before storing artefacts.
 
