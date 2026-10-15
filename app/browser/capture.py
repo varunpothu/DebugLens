@@ -5,7 +5,9 @@ application guard, not a replacement for network-level SSRF protection.
 """
 from __future__ import annotations
 
+import asyncio
 import ipaddress
+import socket
 from typing import Any
 from dataclasses import dataclass
 from urllib.parse import urlparse
@@ -27,6 +29,28 @@ class BrowserCaptureResult:
     console_errors: list[str]
     page_errors: list[str]
     failed_request_count: int
+
+
+def _assert_public_dns_resolution(hostname: str) -> None:
+    """Reject allow-listed hostnames that resolve to any non-global address.
+
+    This is defence in depth only: DNS rebinding and resolution races still require
+    network-level egress controls in the browser worker.
+    """
+    try:
+        answers = socket.getaddrinfo(hostname, None, type=socket.SOCK_STREAM)
+    except OSError as exc:
+        raise UnsafeTargetError("Target hostname could not be resolved.") from exc
+    addresses = {answer[4][0] for answer in answers}
+    if not addresses:
+        raise UnsafeTargetError("Target hostname returned no IP addresses.")
+    for raw_address in addresses:
+        try:
+            address = ipaddress.ip_address(raw_address)
+        except ValueError as exc:
+            raise UnsafeTargetError("DNS returned an invalid IP address.") from exc
+        if not address.is_global:
+            raise UnsafeTargetError("Target hostname resolves to a private or non-global IP address.")
 
 
 def validate_target_url(url: str, allowed_hosts: set[str]) -> str:
@@ -66,7 +90,8 @@ async def capture_page(
     timeout_ms: int = 15000,
 ) -> BrowserCaptureResult:
     """Capture visual and limited runtime evidence without saving raw DOM text or request URLs."""
-    validate_target_url(url, allowed_hosts)
+    target_hostname = validate_target_url(url, allowed_hosts)
+    await asyncio.to_thread(_assert_public_dns_resolution, target_hostname)
     if not (320 <= viewport[0] <= 3840 and 320 <= viewport[1] <= 2160):
         raise ValueError("Viewport is outside the supported safety bounds.")
     try:
@@ -92,10 +117,11 @@ async def capture_page(
 
             async def guard_request(route: Any, request: Any) -> None:
                 try:
-                    validate_target_url(request.url, allowed)
+                    hostname = validate_target_url(request.url, allowed)
                     if request.method not in {"GET", "HEAD"}:
                         await route.abort("blockedbyclient")
                         return
+                    await asyncio.to_thread(_assert_public_dns_resolution, hostname)
                     await route.continue_()
                 except UnsafeTargetError:
                     await route.abort("blockedbyclient")
