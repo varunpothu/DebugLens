@@ -127,7 +127,7 @@ def test_provision_rejects_inconsistent_new_file_line_numbers(tmp_path: Path) ->
             patch_file=patch,
             target_file="app.css",
             output_workspace=tmp_path / "workspace",
-            base_revision="deadbeef",
+            base_revision=revision(base),
         )
 
 
@@ -139,7 +139,7 @@ def test_provision_rejects_path_traversal_and_symlinks(tmp_path: Path) -> None:
             patch_file=patch,
             target_file="../app.css",
             output_workspace=tmp_path / "workspace",
-            base_revision="deadbeef",
+            base_revision=revision(base),
         )
     link = base / "linked.txt"
     link.symlink_to(base / "app.css")
@@ -152,7 +152,7 @@ def test_provision_rejects_path_traversal_and_symlinks(tmp_path: Path) -> None:
             patch_file=patch,
             target_file="app.css",
             output_workspace=tmp_path / "workspace2",
-            base_revision="deadbeef",
+            base_revision=revision(base),
         )
 
 
@@ -164,7 +164,7 @@ def test_manifest_verification_binds_patch_and_workspace(tmp_path: Path) -> None
         patch_file=patch,
         target_file="app.css",
         output_workspace=workspace,
-        base_revision="deadbeef",
+        base_revision=revision(base),
     )
     manifest_path = tmp_path / "manifest.json"
     manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
