@@ -121,7 +121,7 @@ class GeminiVisionProvider:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{self._model}:generateContent"
         try:
             with httpx.Client(timeout=self._timeout) as client:
-                response = client.post(url, params={"key": self._api_key}, json=payload)
+                response = client.post(url, headers={"x-goog-api-key": self._api_key}, json=payload)
                 response.raise_for_status()
                 body = response.json()
             candidates = body.get("candidates") or []
