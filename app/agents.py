@@ -37,7 +37,9 @@ def build_investigation_pipeline(
                     "description": str(item.get("description") or "")[:500],
                     "observed": item.get("observed") is True,
                 })
-        for hypothesis in finding.get("hypotheses", [])[:10]:
+        raw_hypotheses = finding.get("hypotheses")
+        hypothesis_items = raw_hypotheses if isinstance(raw_hypotheses, list) else []
+        for hypothesis in hypothesis_items[:10]:
             hypotheses.append({
                 "finding": title,
                 "severity": severity,
