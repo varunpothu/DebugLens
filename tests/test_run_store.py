@@ -160,7 +160,7 @@ def test_cannot_propose_patch_before_reproduction() -> None:
 
 def test_cannot_mark_verified_without_patch_and_passing_test() -> None:
     run = create_run(bug_report="Issue", screenshot_sha256="a" * 64, analysis=sample_analysis())
-    with pytest.raises(ValueError, match="Illegal workflow transition"):
+    with pytest.raises(ValueError, match="Verification requires a proposed patch"):
         transition_run(
             run["workflow_id"],
             target=WorkflowState.VERIFIED,
