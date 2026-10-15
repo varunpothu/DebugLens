@@ -3,7 +3,7 @@ from io import BytesIO
 from PIL import Image
 
 from app.providers.base import ProviderResult
-from app.redaction import redact_sensitive_text
+from app.redaction import redact_sensitive_data, redact_sensitive_text
 from app.services import analyzer
 
 
@@ -81,3 +81,25 @@ def test_provider_receives_redacted_text(monkeypatch) -> None:
     assert "alex@example.com" not in (captured["bug_report"] or "")
     assert "secret-value" not in (captured["bug_report"] or "")
     assert "[REDACTED]" in (captured["bug_report"] or "")
+
+
+
+def test_redacts_quoted_secrets_with_spaces() -> None:
+    result = redact_sensitive_text('password="two word secret"')
+    assert result == 'password="[REDACTED]"'
+
+
+def test_redacts_sensitive_values_by_structured_field_name() -> None:
+    result = redact_sensitive_data(
+        {
+            "password": "two word secret",
+            "user_email": "alex@example.com",
+            "viewport": "390x844",
+            "nested": [{"access_token": "token-value"}],
+        }
+    )
+    assert isinstance(result, dict)
+    assert result["password"] == "[REDACTED]"
+    assert result["user_email"] == "[REDACTED]"
+    assert result["viewport"] == "390x844"
+    assert result["nested"][0]["access_token"] == "[REDACTED]"
