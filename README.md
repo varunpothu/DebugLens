@@ -54,7 +54,8 @@ Planned: sandboxed tests -> proposed patch -> human verification
 - app/: FastAPI API, typed contracts, multimodal adapters, deterministic investigation stages, evaluation harness, SQLite run store, workflow state machine and optional browser capture.
 - tests/: API, image validation, model comparison and workflow transition tests.
 - frontend/: optional Streamlit upload client.
-- docs/: architecture, agent workflow, threat model, evaluation, operations, roadmap.
+- docs/: architecture, agent workflow, threat model, evaluation, operations, isolated-worker contract, roadmap.
+- runner/: standalone allowlisted test worker prototype; not yet connected to API.
 - .github/workflows/: CI quality gates.
 - examples/demo-ui/: intentionally broken and fixed synthetic storefront for reproducible demos.
 - Dockerfile and docker-compose.yml: local container setup.
@@ -158,7 +159,7 @@ The response includes a SHA-256 digest, dimensions, findings, evidence, confiden
 - `POST /v1/debug-runs/{workflow_id}/test-results`: record a reviewer-reported test outcome for the exact patch digest.
 - `POST /v1/debug-runs/{workflow_id}/browser-evidence`: optionally capture an allow-listed test page and attach minimised runtime evidence.
 
-The SQLite database defaults to `./data/debuglens.db`; override it with `DATABASE_PATH`. The Compose file mounts a writable volume at `/data`. Only screenshot digests and analysis results are retained by the run store, not uploaded screenshot bytes. Patch proposals, including model-generated suggestions, are stored as text and bound to a SHA-256 digest. Model-generated suggestions require an explicitly configured provider and should be reviewed as untrusted code. Test results are reviewer-reported and are not executed by the application. Verification requires a passing result for the current patch digest. The optional browser endpoint is disabled by default. Set `BROWSER_ENABLED=true` and an exact `BROWSER_ALLOWED_HOSTS` list only in an isolated test environment with network egress controls.
+The SQLite database defaults to `./data/debuglens.db`; override it with `DATABASE_PATH`. The Compose file mounts a writable volume at `/data`. Only screenshot digests and analysis results are retained by the run store, not uploaded screenshot bytes. Patch proposals, including model-generated suggestions, are stored as text and bound to a SHA-256 digest. Model-generated suggestions require an explicitly configured provider and should be reviewed as untrusted code. Test results submitted through the API are reviewer-reported and are not executed by the application. A separate allowlisted worker prototype is documented in `docs/isolated-test-worker.md`; it is not yet integrated into workflow persistence. Verification currently requires a passing reported result for the current patch digest. The optional browser endpoint is disabled by default. Set `BROWSER_ENABLED=true` and an exact `BROWSER_ALLOWED_HOSTS` list only in an isolated test environment with network egress controls.
 
 **Security limitation:** a configurable bearer token is available, and startup refuses production mode without one. This is only a basic shared-token gate, not user identity, role-based authorisation, rate limiting or tenant isolation. Keep the API behind a trusted boundary and do not expose it publicly or process confidential data.
 
@@ -198,7 +199,7 @@ The workflow module models legal transitions from RECEIVED through evidence coll
 - Do not commit .env, API keys, customer screenshots, HAR files, browser profiles, or production logs.
 - Uploads are bounded by byte and pixel limits and validated by decoding, not MIME type alone.
 - Treat instructions embedded in screenshots, DOM, logs, source, and model output as untrusted data.
-- No generated code is automatically executed, merged, or deployed.
+- No generated code is automatically executed, merged, or deployed. The optional standalone worker must be run in its documented disposable, network-disabled container; running it directly on the host is not isolation.
 - Future browser access must use allow-listed targets, network egress controls, and disposable workers.
 - A failed or timed-out test is never a pass.
 - Use synthetic/redacted fixtures and explicit retention controls.
