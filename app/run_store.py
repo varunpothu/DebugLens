@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from hashlib import sha256
 from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
@@ -44,6 +45,33 @@ def initialise_store() -> None:
             )"""
         )
         db.execute("CREATE INDEX IF NOT EXISTS idx_debug_runs_updated ON debug_runs(updated_at DESC)")
+        db.execute(
+            """CREATE TABLE IF NOT EXISTS patch_proposals (
+                proposal_id TEXT PRIMARY KEY,
+                workflow_id TEXT NOT NULL,
+                patch_sha256 TEXT NOT NULL,
+                patch_diff TEXT NOT NULL,
+                rationale TEXT NOT NULL,
+                risk TEXT NOT NULL,
+                rollback_plan TEXT NOT NULL,
+                actor TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            )"""
+        )
+        db.execute("CREATE INDEX IF NOT EXISTS idx_patch_proposals_run ON patch_proposals(workflow_id, created_at DESC)")
+        db.execute(
+            """CREATE TABLE IF NOT EXISTS test_reports (
+                report_id TEXT PRIMARY KEY,
+                workflow_id TEXT NOT NULL,
+                patch_sha256 TEXT NOT NULL,
+                outcome TEXT NOT NULL,
+                command TEXT NOT NULL,
+                summary TEXT NOT NULL,
+                actor TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            )"""
+        )
+        db.execute("CREATE INDEX IF NOT EXISTS idx_test_reports_run ON test_reports(workflow_id, created_at DESC)")
 
 
 def _event_dict(event: Any) -> dict[str, Any]:
@@ -203,6 +231,150 @@ def attach_browser_evidence(
                 json.dumps(events, separators=(",", ":")),
                 workflow_id,
             ),
+        )
+        db.commit()
+    return get_run(workflow_id)
+
+
+def create_patch_proposal(
+    workflow_id: str,
+    *,
+    patch_diff: str,
+    rationale: str,
+    risk: str,
+    rollback_plan: str,
+    actor: str,
+) -> dict[str, Any]:
+    """Store a human-authored diff and transition a reproduced run to patch proposed."""
+    initialise_store()
+    if not patch_diff.strip() or len(patch_diff) > 200_000:
+        raise ValueError("Patch diff must contain 1 to 200000 characters.")
+    if not actor.strip() or len(actor) > 120:
+        raise ValueError("Actor must contain 1 to 120 characters.")
+    patch_digest = sha256(patch_diff.encode("utf-8")).hexdigest()
+    proposal_id = str(uuid4())
+    now = datetime.now(timezone.utc).isoformat()
+    with _connect() as db:
+        db.execute("BEGIN IMMEDIATE")
+        row = db.execute("SELECT * FROM debug_runs WHERE workflow_id = ?", (workflow_id,)).fetchone()
+        if row is None:
+            db.rollback()
+            raise KeyError(workflow_id)
+        record = _decode_row(row)
+        current = WorkflowState(record["state"])
+        if current != WorkflowState.REPRODUCED:
+            db.rollback()
+            raise ValueError("A patch proposal is only allowed after the issue has been reproduced.")
+        workflow = DebugWorkflow(workflow_id=workflow_id, state=current)
+        event = workflow.transition(
+            WorkflowState.PATCH_PROPOSED,
+            actor=actor,
+            reason=f"Patch proposal {patch_digest} created for human review.",
+        )
+        events = record["events"]
+        events.append(_event_dict(event))
+        events.append({
+            "event_type": "patch_proposal_created",
+            "event_id": proposal_id,
+            "workflow_id": workflow_id,
+            "from_state": current.value,
+            "to_state": WorkflowState.PATCH_PROPOSED.value,
+            "actor": actor,
+            "reason": rationale[:1000],
+            "timestamp": now,
+            "patch_sha256": patch_digest,
+        })
+        db.execute(
+            """INSERT INTO patch_proposals
+            (proposal_id, workflow_id, patch_sha256, patch_diff, rationale, risk, rollback_plan, actor, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (proposal_id, workflow_id, patch_digest, patch_diff, rationale, risk, rollback_plan, actor, now),
+        )
+        db.execute(
+            "UPDATE debug_runs SET state = ?, updated_at = ?, events_json = ? WHERE workflow_id = ?",
+            (WorkflowState.PATCH_PROPOSED.value, now, json.dumps(events, separators=(",", ":")), workflow_id),
+        )
+        db.commit()
+    return get_run(workflow_id)
+
+
+def record_test_result(
+    workflow_id: str,
+    *,
+    patch_sha256: str,
+    outcome: str,
+    command: str,
+    summary: str,
+    actor: str,
+) -> dict[str, Any]:
+    """Record a reviewer-reported test outcome bound to the exact patch digest."""
+    initialise_store()
+    if outcome not in {"passed", "failed"}:
+        raise ValueError("Test outcome must be passed or failed.")
+    if not actor.strip() or len(actor) > 120:
+        raise ValueError("Actor must contain 1 to 120 characters.")
+    report_id = str(uuid4())
+    now = datetime.now(timezone.utc).isoformat()
+    with _connect() as db:
+        db.execute("BEGIN IMMEDIATE")
+        row = db.execute("SELECT * FROM debug_runs WHERE workflow_id = ?", (workflow_id,)).fetchone()
+        if row is None:
+            db.rollback()
+            raise KeyError(workflow_id)
+        record = _decode_row(row)
+        current = WorkflowState(record["state"])
+        patch = db.execute(
+            "SELECT patch_sha256 FROM patch_proposals WHERE workflow_id = ? ORDER BY created_at DESC LIMIT 1",
+            (workflow_id,),
+        ).fetchone()
+        if current not in {WorkflowState.PATCH_PROPOSED, WorkflowState.TESTED}:
+            db.rollback()
+            raise ValueError("Test results can only be recorded for a proposed patch.")
+        if patch is None or patch["patch_sha256"] != patch_sha256:
+            db.rollback()
+            raise ValueError("Test result must reference the current patch SHA-256 digest.")
+        events = record["events"]
+        if outcome == "passed" and current == WorkflowState.PATCH_PROPOSED:
+            workflow = DebugWorkflow(workflow_id=workflow_id, state=current)
+            event = workflow.transition(
+                WorkflowState.TESTED,
+                actor=actor,
+                reason=f"Reviewer reported tests passed for patch {patch_sha256}.",
+            )
+            events.append(_event_dict(event))
+            next_state = WorkflowState.TESTED
+        elif outcome == "failed" and current == WorkflowState.TESTED:
+            workflow = DebugWorkflow(workflow_id=workflow_id, state=current)
+            event = workflow.transition(
+                WorkflowState.PATCH_PROPOSED,
+                actor=actor,
+                reason=f"Reviewer reported test failure for patch {patch_sha256}; another review is required.",
+            )
+            events.append(_event_dict(event))
+            next_state = WorkflowState.PATCH_PROPOSED
+        else:
+            next_state = current
+        events.append({
+            "event_type": "test_result_recorded",
+            "event_id": report_id,
+            "workflow_id": workflow_id,
+            "from_state": current.value,
+            "to_state": next_state.value,
+            "actor": actor,
+            "reason": summary[:1000],
+            "timestamp": now,
+            "patch_sha256": patch_sha256,
+            "outcome": outcome,
+        })
+        db.execute(
+            """INSERT INTO test_reports
+            (report_id, workflow_id, patch_sha256, outcome, command, summary, actor, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            (report_id, workflow_id, patch_sha256, outcome, command, summary, actor, now),
+        )
+        db.execute(
+            "UPDATE debug_runs SET state = ?, updated_at = ?, events_json = ? WHERE workflow_id = ?",
+            (next_state.value, now, json.dumps(events, separators=(",", ":")), workflow_id),
         )
         db.commit()
     return get_run(workflow_id)
