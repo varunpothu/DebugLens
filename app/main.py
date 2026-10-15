@@ -307,6 +307,11 @@ async def collect_browser_evidence(
             status_code=404,
             detail="Browser capture is disabled. Enable it only for an approved, isolated environment.",
         )
+    if settings.app_env.lower() not in {"local", "development", "test"}:
+        raise HTTPException(
+            status_code=503,
+            detail="Browser capture is restricted to local development until an isolated browser worker is deployed.",
+        )
     if not settings.allowed_browser_hosts:
         raise HTTPException(status_code=503, detail="No browser target allow-list is configured.")
     try:
