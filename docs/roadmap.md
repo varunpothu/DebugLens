@@ -58,7 +58,8 @@
 
 ## Phase 4: Verification and repair
 
-- [ ] Screenshot baseline comparison and perceptual metrics
+- [x] Deterministic screenshot baseline comparison with changed-pixel ratio, mean absolute error, and diff bounds
+- [ ] Add perceptual similarity metrics and approved dynamic-region masking
 - [ ] Accessibility checks and cross-viewport test matrix
 - [x] Run approved suites in a network-disabled worker container with no secrets and resource limits
 - [ ] Add an independent review of the sandbox boundary and Docker daemon permissions
