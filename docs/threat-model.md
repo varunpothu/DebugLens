@@ -17,7 +17,7 @@ Screenshots, source snippets, DOM and HAR data, provider credentials, repository
 
 - **Malicious upload / parser abuse:** byte limits, MIME allow-list plus actual image decoding, pixel limits, dependency updates, isolated processing.
 - **Prompt injection in screenshots, DOM, logs or source:** treat all artefacts as untrusted data; never allow artefact text to change system policy, tools, credentials, or approval requirements.
-- **Sensitive data exfiltration:** synthetic fixtures by default, redaction before provider calls, provider data-processing review, no raw artefacts in logs, retention limits.
+- **Sensitive data exfiltration:** synthetic fixtures by default; deterministic pattern-based redaction for common sensitive text before provider calls; provider data-processing review; no raw artefacts in logs; retention limits. Text redaction is not comprehensive DLP, and screenshot bytes are currently sent unchanged to configured vision providers. OCR-assisted image redaction and independent privacy review remain release gates.
 - **Hallucinated diagnosis:** typed output schema, evidence references, explicit hypotheses, confidence calibration, human review.
 - **Unsafe generated patch:** diff-only proposal, protected branches, CI gates, no host execution, sandboxed test environment, explicit approval.
 - **SSRF and browser pivoting:** deny arbitrary URLs, enforce domain allow-list, block private/link-local/metadata IP ranges, egress filtering, DNS rebinding protection, no ambient credentials.
