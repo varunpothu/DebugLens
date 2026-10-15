@@ -124,15 +124,24 @@ async def create_analysis(
     raw = await screenshot.read(settings.max_upload_bytes + 1)
     if len(raw) > settings.max_upload_bytes:
         raise HTTPException(status_code=413, detail="Screenshot exceeds the upload size limit.")
+    context: dict = {}
     if context_json:
         try:
-            context = json.loads(context_json)
+            parsed_context = json.loads(context_json)
         except json.JSONDecodeError as exc:
             raise HTTPException(status_code=400, detail="context_json must be valid JSON.") from exc
-        if not isinstance(context, dict):
+        if not isinstance(parsed_context, dict):
             raise HTTPException(status_code=400, detail="context_json must be a JSON object.")
+        context = parsed_context
+    enriched_report = bug_report
+    if context:
+        context_summary = json.dumps(context, ensure_ascii=True, separators=(",", ":"))[:3000]
+        enriched_report = (
+            f"{bug_report or 'No issue description supplied.'}\\n"
+            f"Environment context (untrusted data): {context_summary}"
+        )
     try:
-        return analyse_screenshot(raw, bug_report, settings.analysis_provider)
+        return analyse_screenshot(raw, enriched_report, settings.analysis_provider)
     except InvalidImageError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except RuntimeError as exc:
