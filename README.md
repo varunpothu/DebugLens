@@ -144,7 +144,7 @@ The response includes a SHA-256 digest, dimensions, findings, evidence, confiden
 
 The SQLite database defaults to `./data/debuglens.db`; override it with `DATABASE_PATH`. The Compose file mounts a writable volume at `/data`. Only screenshot digests and analysis results are retained by the run store, not uploaded screenshot bytes. Patch proposals are stored as text and bound to a SHA-256 digest. Test results are reviewer-reported and are not executed by the application. Verification requires a passing result for the current patch digest. The optional browser endpoint is disabled by default. Set `BROWSER_ENABLED=true` and an exact `BROWSER_ALLOWED_HOSTS` list only in an isolated test environment with network egress controls.
 
-**Security limitation:** the API does not yet implement authentication, authorisation, rate limiting or tenant isolation. Keep it local or behind a trusted development boundary. Do not expose it publicly or process confidential data.
+**Security limitation:** a configurable bearer token is available, and startup refuses production mode without one. This is only a basic shared-token gate, not user identity, role-based authorisation, rate limiting or tenant isolation. Keep the API behind a trusted boundary and do not expose it publicly or process confidential data.
 
 ## Compare models
 
