@@ -101,3 +101,13 @@ class TestResultRequest(BaseModel):
     command: str = Field(min_length=1, max_length=500)
     summary: str = Field(min_length=1, max_length=2000)
     actor: str = Field(min_length=1, max_length=120)
+
+
+
+class PatchSuggestionRequest(BaseModel):
+    """Bounded source context for a review-only model-generated diff suggestion."""
+
+    model_config = ConfigDict(extra="forbid")
+    target_file: str = Field(min_length=1, max_length=240)
+    source_context: str = Field(min_length=1, max_length=50000)
+    actor: str = Field(min_length=1, max_length=120)
