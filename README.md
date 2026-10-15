@@ -4,7 +4,7 @@
 
 DebugLens turns a UI failure report into a traceable investigation. It validates screenshots, records evidence metadata, optionally calls a vision-capable model, returns structured findings, and makes clear what remains unverified. The longer-term workflow correlates screenshots with browser/runtime evidence, proposes regression tests, and prepares fixes for human review.
 
-> **Current maturity:** working foundation with a deterministic mock provider, opt-in OpenAI-compatible, Anthropic, and Gemini vision adapters, typed evidence contracts, API tests, an auditable workflow state machine, and CI. Browser execution, automated patching, cloud deployment, and production-grade multi-agent orchestration remain roadmap items. This is not yet a production-ready autonomous debugger.
+> **Current maturity:** working foundation with a deterministic mock provider, opt-in OpenAI-compatible, Anthropic, and Gemini vision adapters, a side-by-side model evaluation harness, typed evidence contracts, API tests, an auditable workflow state machine, and CI. Browser execution, automated patching, cloud deployment, and production-grade multi-agent orchestration remain roadmap items. This is not yet a production-ready autonomous debugger.
 
 ## Product principles
 
@@ -37,6 +37,9 @@ Mock       OpenAI      Anthropic / Gemini
 Typed findings + evidence + limitations + test plan
               |
               v
+Model comparison harness -> benchmark and human adjudication
+              |
+              v
 Planned: browser evidence -> agent workflow -> human approval
               |
               v
@@ -45,8 +48,8 @@ Planned: sandboxed tests -> proposed patch -> human verification
 
 ## Repository layout
 
-- app/: FastAPI API, typed contracts, multimodal adapters, and workflow state machine.
-- tests/: API, image validation, and workflow transition tests.
+- app/: FastAPI API, typed contracts, multimodal adapters, evaluation harness, workflow state machine.
+- tests/: API, image validation, model comparison and workflow transition tests.
 - frontend/: optional Streamlit upload client.
 - docs/: architecture, agent workflow, threat model, evaluation, operations, roadmap.
 - .github/workflows/: CI quality gates.
@@ -126,6 +129,23 @@ curl.exe -X POST http://127.0.0.1:8000/v1/analyses -F "screenshot=@sample.png" -
 
 The response includes a SHA-256 digest, dimensions, findings, evidence, confidence, recommended checks, a test plan, limitations, and a human-review flag. Screenshot-only analysis cannot establish DOM or runtime root causes by itself.
 
+## Compare models
+
+The Python evaluation harness runs selected providers and reports latency, findings, confidence values, model versions, and provider failures without silently switching models. It does not determine which model is correct. See docs/model-evaluation.md for a labelled-benchmark protocol.
+
+~~~python
+from app.evaluation import compare_models
+
+with open("redacted-ui.png", "rb") as image:
+    report = compare_models(
+        image.read(),
+        "The modal overlaps the primary button on mobile",
+        ["mock", "openai_compatible", "anthropic", "gemini"],
+    )
+~~~
+
+Configure credentials for every real provider selected. Treat agreement between models as a signal, not proof.
+
 ## Workflow state machine
 
 The workflow module models legal transitions from RECEIVED through evidence collection, hypothesis review, reproduction, patch proposal, testing, and verification. Every transition requires an actor and reason and creates an audit event. It records state; it does not yet execute browser actions or code.
@@ -143,7 +163,7 @@ The workflow module models legal transitions from RECEIVED through evidence coll
 
 ## Roadmap
 
-1. Foundation: API, mock provider, three vision adapters, evidence contracts, workflow state machine, tests and CI.
+1. Foundation: API, mock provider, three vision adapters, evaluation harness, evidence contracts, workflow state machine, tests and CI.
 2. Multi-model evaluation: provider-specific contract tests, benchmark suite, model comparison and confidence calibration.
 3. Browser evidence: Playwright capture of screenshots, DOM, console and network signals in a sandbox.
 4. Agent orchestration: bounded specialist tasks, durable state, retries, timeouts, budgets and approval gates.
@@ -151,4 +171,4 @@ The workflow module models legal transitions from RECEIVED through evidence coll
 6. Production operations: observability, rate limits, privacy controls, security review, and incident response.
 7. AWS: ECS/Fargate, S3, SQS, Step Functions approval callbacks, Secrets Manager, CloudWatch and Terraform after review.
 
-See docs/architecture.md, docs/agent-workflow.md, docs/threat-model.md, docs/evaluation.md, docs/operations.md, and docs/roadmap.md.
+See docs/architecture.md, docs/agent-workflow.md, docs/model-evaluation.md, docs/threat-model.md, docs/evaluation.md, docs/operations.md, and docs/roadmap.md.
