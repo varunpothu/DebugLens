@@ -90,8 +90,8 @@ def test_provision_accepts_standard_git_index_metadata(tmp_path: Path) -> None:
     base, patch = prepare(tmp_path)
     patch.write_text(
         PATCH.replace(
-            "diff --git a/app.css b/app.css\\n",
-            "diff --git a/app.css b/app.css\\nindex abcdef0..abcdef1 100644\\n",
+            "diff --git a/app.css b/app.css\n",
+            "diff --git a/app.css b/app.css\nindex abcdef0..abcdef1 100644\n",
         ),
         encoding="utf-8",
     )
