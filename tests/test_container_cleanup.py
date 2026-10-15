@@ -82,7 +82,7 @@ def test_cleanup_skips_unlabelled_and_recent_containers(monkeypatch: pytest.Monk
             return subprocess.CompletedProcess(command, 0, stdout=b"0123456789ab\n")
         inspected += 1
         payload = _container_payload(
-            created=now - timedelta(minutes=5),
+            created=now - timedelta(hours=1),
             label=False,
         )
         return subprocess.CompletedProcess(command, 0, stdout=payload)
@@ -95,3 +95,20 @@ def test_cleanup_skips_unlabelled_and_recent_containers(monkeypatch: pytest.Monk
 def test_cleanup_rejects_unsafe_age_threshold() -> None:
     with pytest.raises(ValueError, match="between 600 seconds and 7 days"):
         container_cleanup.find_stale_containers(max_age_seconds=30)
+
+
+
+def test_cleanup_skips_recent_managed_container(monkeypatch: pytest.MonkeyPatch) -> None:
+    now = datetime.now(timezone.utc)
+
+    def fake_run(command: list[str], **kwargs: object) -> subprocess.CompletedProcess[bytes]:
+        if command[1:3] == ["ps", "-aq"]:
+            return subprocess.CompletedProcess(command, 0, stdout=b"0123456789ab\n")
+        return subprocess.CompletedProcess(
+            command,
+            0,
+            stdout=_container_payload(created=now - timedelta(minutes=5), label=True),
+        )
+
+    monkeypatch.setattr(container_cleanup, "_run", fake_run)
+    assert container_cleanup.cleanup_stale_containers(apply=True, now=now) == []
