@@ -11,31 +11,36 @@
 ## Components
 
 - **API ingress:** validates content type, upload size, context shape, and returns a correlation ID.
-- **Evidence normaliser:** computes a content digest and records dimensions. Future adapters should redact or minimise sensitive content before external transmission.
-- **Analysis orchestrator:** coordinates bounded tasks, enforces timeouts and budgets, validates typed outputs, and records failures.
-- **Vision adapter:** provider-specific implementation behind a stable interface. Provider choice must be explicit.
-- **Browser evidence collector (planned):** Playwright-based screenshots, DOM snapshots, console errors, network failures, viewport and browser metadata. Run only against an allow-listed target in a disposable environment.
-- **Test planner (planned):** converts supported findings into candidate test cases, never treats generated tests as authoritative until reviewed.
-- **Repair proposer (planned):** emits a diff and rationale. It does not execute or merge the diff.
+- **Evidence normaliser:** validates image bytes, computes a content digest and records dimensions. Automatic PII redaction is not implemented yet.
+- **Analysis orchestrator:** calls the explicitly configured provider and returns typed findings, test suggestions, and limitations. It does not infer runtime facts from screenshots alone.
+- **Vision adapters:** OpenAI-compatible, Anthropic, and Gemini adapters behind a shared provider contract.
+- **Local run store:** SQLite persistence for analysis output, workflow state, and actor-attributed audit events. Use PostgreSQL and schema migrations for multi-user production.
+- **Browser evidence collector:** optional Playwright capture behind a disabled-by-default endpoint. It captures screenshot analysis, page title, viewport, tag counts, console error types, page error classes, and failed-request counts. Exact hostname allow-listing is necessary but not sufficient without network egress controls.
+- **Model comparison harness:** records provider output summaries and latency. Correctness requires a labelled benchmark and human adjudication.
+- **Streamlit dashboard:** create investigations, browse history, inspect findings, and record legal workflow transitions.
+- **Repair proposer (planned):** emits a diff and rationale. It must not execute or merge the diff.
 - **Verifier (planned):** runs tests and visual comparisons in an isolated worker and records both passing and failing checks.
-- **Audit and observability:** correlation IDs, redacted structured events, latency, model version, prompt version, token/cost budget, and evaluation results.
 
 ## State machine
 
 RECEIVED -> VALIDATED -> EVIDENCE_COLLECTED -> HYPOTHESES_READY -> HUMAN_REVIEW -> REPRODUCED -> PATCH_PROPOSED -> TESTED -> VERIFIED or REJECTED.
 
-Any state may transition to FAILED or CANCELLED. Transitions should be explicit and idempotent. A timeout must not silently advance a workflow.
+Any eligible state may transition to FAILED or CANCELLED according to the explicit transition map. A timeout must not silently advance a workflow. Human state changes require actor and reason fields.
 
-## Evidence contract
+## Data retention
 
-Each finding has a severity, calibrated confidence, category, explanation, supporting evidence, hypotheses, and recommended checks. Evidence records identify the source and whether it is directly observed. Future model adapters must not fabricate browser logs or claim a test was run when it was not.
+The run store retains screenshot SHA-256 digests and structured analysis, not original uploaded screenshot bytes. Browser screenshot bytes are analysed in memory and are not retained by the run store. Provider calls still transmit screenshots to the configured external provider when a real provider is enabled. Review provider privacy, retention, residency, and contractual terms before sending sensitive material.
+
+## Security boundary
+
+The API currently has no authentication, authorisation, rate limiting, or tenant isolation. Keep it local or inside a trusted development environment. The browser endpoint is disabled by default and must only be enabled in a disposable worker with exact host allow-lists and network-level SSRF/egress controls. Do not treat application-level URL checks as a substitute for firewall rules.
 
 ## Production deployment target
 
 Recommended AWS path after local validation:
 
 - Amazon ECS Fargate for API and isolated worker tasks.
-- Application Load Balancer with TLS and request limits.
+- Application Load Balancer with TLS, authentication, and request limits.
 - S3 with SSE-KMS, short lifecycle, and narrowly scoped access for approved artefacts.
 - SQS for asynchronous jobs and DLQs for repeated failures.
 - Step Functions for durable workflows and explicit human approval callbacks.
@@ -43,4 +48,4 @@ Recommended AWS path after local validation:
 - CloudWatch logs/metrics/alarms and OpenTelemetry-compatible traces.
 - ECR image scanning and GitHub Actions OIDC for deployment without long-lived AWS keys.
 
-Do not deploy Terraform until account, region, budgets, retention, networking, IAM, and threat model are reviewed. Production infrastructure is not created by this scaffold.
+Do not deploy Terraform until account, region, budgets, retention, networking, IAM, and threat model are reviewed. The current Terraform module provisions only private artifact storage, not the application infrastructure.
