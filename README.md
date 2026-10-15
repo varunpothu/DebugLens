@@ -4,7 +4,7 @@
 
 DebugLens turns a UI failure report into a traceable investigation. It validates screenshots, records evidence metadata, optionally calls a vision-capable model, returns structured findings, and makes clear what remains unverified. The longer-term workflow correlates screenshots with browser/runtime evidence, proposes regression tests, and prepares fixes for human review.
 
-> **Current maturity:** DebugLens includes a local investigation lifecycle, SQLite audit history, Streamlit review dashboard, three vision-provider adapters, model comparison, allow-listed browser evidence, review-only patch proposals, signed execution-result ingestion, a network-disabled Docker test worker, a Git-verified patch workspace provisioner, and a durable local SQLite execution queue with cancellation and dead-letter replay. A deterministic pixel-diff utility is available for screenshot regression checks. Full LLM specialist-agent orchestration, automatic PII redaction, independent sandbox review, production identity/roles/tenant isolation, and the AWS application deployment are still incomplete. Keep the service local or in a trusted development environment; do not expose it as a public service.
+> **Current maturity:** DebugLens includes a local investigation lifecycle, SQLite audit history, Streamlit review dashboard, three vision-provider adapters, model comparison, allow-listed browser evidence, review-only patch proposals, signed execution-result ingestion, a network-disabled Docker test worker, a Git-verified patch workspace provisioner, and a durable local SQLite execution queue with cancellation and dead-letter replay. Deterministic pixel-diff metrics and bounded static accessibility heuristics are available as local utilities. Full LLM specialist-agent orchestration, automatic PII redaction, independent sandbox review, production identity/roles/tenant isolation, and the AWS application deployment are still incomplete. Keep the service local or in a trusted development environment; do not expose it as a public service.
 
 ## Product principles
 
@@ -51,10 +51,10 @@ Planned: sandboxed tests -> proposed patch -> human verification
 
 ## Repository layout
 
-- app/: FastAPI API, typed contracts, multimodal adapters, deterministic investigation stages, evaluation harness, SQLite run store, workflow state machine and optional browser capture.
+- app/: FastAPI API, typed contracts, multimodal adapters, deterministic investigation stages, evaluation harness, SQLite run store, workflow state machine, optional browser capture, visual regression metrics, and static accessibility heuristics.
 - tests/: API, image validation, model comparison and workflow transition tests.
 - frontend/: optional Streamlit upload client.
-- docs/: architecture, agent workflow, threat model, evaluation, operations, isolated-worker contract, visual regression guide, and roadmap.
+- docs/: architecture, agent workflow, threat model, evaluation, operations, isolated-worker contract, visual regression and accessibility guides, and roadmap.
 - runner/: allowlisted test worker, Docker orchestrator, Git-verified workspace provisioner, and durable local execution queue.
 - .github/workflows/: CI quality gates.
 - examples/demo-ui/: intentionally broken and fixed synthetic storefront for reproducible demos.
