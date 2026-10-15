@@ -118,6 +118,7 @@ class ExecutionResultRequest(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
     workflow_id: str = Field(min_length=1, max_length=80)
+    execution_id: str = Field(pattern="^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$")
     patch_sha256: str = Field(pattern="^[a-f0-9]{64}$")
     suite: str = Field(pattern="^(pytest|ruff|mypy)$")
     outcome: str = Field(pattern="^(passed|failed|timed_out)$")
