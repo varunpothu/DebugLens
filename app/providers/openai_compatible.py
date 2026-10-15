@@ -3,6 +3,7 @@
 The adapter sends only the image and user-provided bug report. Review provider privacy,
 retention, region, and contractual terms before enabling it for non-synthetic data.
 """
+
 from __future__ import annotations
 
 import base64
@@ -88,6 +89,15 @@ class OpenAICompatibleVisionProvider:
                 usage_input_tokens=usage.get("prompt_tokens"),
                 usage_output_tokens=usage.get("completion_tokens"),
             )
-        except (httpx.HTTPError, KeyError, IndexError, TypeError, json.JSONDecodeError, ValidationError, ValueError) as exc:
-            # Avoid propagating raw provider responses, which may contain sensitive content.
-            raise RuntimeError("Vision provider request failed or returned invalid structured output.") from exc
+        except (
+            httpx.HTTPError,
+            KeyError,
+            IndexError,
+            TypeError,
+            json.JSONDecodeError,
+            ValidationError,
+            ValueError,
+        ) as exc:
+            raise RuntimeError(
+                "Vision provider request failed or returned invalid structured output."
+            ) from exc
