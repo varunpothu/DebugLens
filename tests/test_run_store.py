@@ -10,6 +10,7 @@ from app.run_store import (
     get_run,
     initialise_store,
     list_runs,
+    record_execution_result,
     record_test_result,
     transition_run,
 )
@@ -135,14 +136,36 @@ def test_patch_proposal_and_test_result_gate_verification() -> None:
         actor="reviewer",
     )
     assert run["state"] == WorkflowState.TESTED.value
+    with pytest.raises(ValueError, match="trusted execution report"):
+        transition_run(
+            run["workflow_id"],
+            target=WorkflowState.VERIFIED,
+            actor="reviewer",
+            reason="A reviewer report alone must not verify the patch.",
+        )
+
+    run = record_execution_result(
+        run["workflow_id"],
+        patch_sha256=digest,
+        suite="pytest",
+        outcome="passed",
+        exit_code=0,
+        timed_out=False,
+        duration_seconds=1.2,
+        workspace_sha256="b" * 64,
+        output="5 passed",
+        output_truncated=False,
+        actor="trusted-runner",
+    )
     run = transition_run(
         run["workflow_id"],
         target=WorkflowState.VERIFIED,
         actor="reviewer",
-        reason="Reviewed the diff and test output; accepted for this test fixture.",
+        reason="Reviewed the patch and isolated execution evidence.",
     )
     assert run["state"] == WorkflowState.VERIFIED.value
     assert run["test_reports"][0]["outcome"] == "passed"
+    assert run["execution_reports"][0]["workspace_sha256"] == "b" * 64
 
 
 def test_cannot_propose_patch_before_reproduction() -> None:
