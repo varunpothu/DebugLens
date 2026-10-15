@@ -92,6 +92,28 @@ async def require_api_token(request: Request, call_next: RequestResponseEndpoint
     return await call_next(request)
 
 
+@app.middleware("http")
+async def request_guardrails(request: Request, call_next: RequestResponseEndpoint) -> Response:
+    """Reject obviously oversized declared bodies and add conservative API response headers."""
+    content_length = request.headers.get("content-length")
+    if content_length is not None:
+        try:
+            declared_length = int(content_length)
+        except ValueError:
+            return JSONResponse(status_code=400, content={"detail": "Invalid Content-Length header."})
+        if declared_length < 0:
+            return JSONResponse(status_code=400, content={"detail": "Invalid Content-Length header."})
+        # Allow multipart framing and form fields in addition to the bounded screenshot itself.
+        max_request_bytes = settings.max_upload_bytes + 1024 * 1024
+        if declared_length > max_request_bytes:
+            return JSONResponse(status_code=413, content={"detail": "Request body exceeds the configured limit."})
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
     return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
