@@ -132,7 +132,7 @@ GEMINI_API_KEY=your_key_here
 GEMINI_MODEL=gemini-2.5-flash
 ~~~
 
-Use a model that supports image input and the required JSON response behaviour. Model names and availability can change, so confirm them with the provider. Before using real or customer data, review provider privacy, retention, region, access, cost, and contractual terms. The project does not currently redact image contents automatically.
+Use a model that supports image input and the required JSON response behaviour. Model names and availability can change, so confirm them with the provider. Before using real or customer data, review provider privacy, retention, region, access, cost, and contractual terms. The project does not currently redact image contents automatically. External vision-provider calls are blocked by default because screenshot pixels are not redacted. To deliberately allow this transfer after a privacy review, set `ALLOW_UNREDACTED_SCREENSHOTS=true` in your local `.env`; this is an explicit risk acceptance, not a redaction control. Keep it unset for synthetic/mock development.
 
 ## API
 
