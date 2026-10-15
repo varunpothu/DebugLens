@@ -31,10 +31,12 @@ def redact_sensitive_text(value: str | None) -> str | None:
     """
     if value is None:
         return None
+    # Remove the complete bearer credential before processing labelled keys.
+    redacted = _PATTERNS[0].sub(_REPLACEMENT, value)
     redacted = _LABELED_SECRET.sub(
         lambda match: match.group(1) + _REPLACEMENT,
-        value,
+        redacted,
     )
-    for pattern in _PATTERNS:
+    for pattern in _PATTERNS[1:]:
         redacted = pattern.sub(_REPLACEMENT, redacted)
     return redacted
