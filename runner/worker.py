@@ -94,6 +94,7 @@ def run_suite(suite: str, timeout_seconds: int = 120) -> dict[str, object]:
                     "PYTHONPATH": str(WORKSPACE),
                     "PYTEST_ADDOPTS": "-p no:cacheprovider",
                     "MYPY_CACHE_DIR": "/tmp/mypy_cache",
+                    "RUFF_CACHE_DIR": "/tmp/ruff_cache",
                 },
             )
             exit_code = completed.returncode
