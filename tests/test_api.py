@@ -1,3 +1,6 @@
+import hashlib
+import hmac
+import json
 from hashlib import sha256
 from io import BytesIO
 
@@ -194,12 +197,48 @@ def test_patch_proposal_and_test_result_api_enforce_digest_gate() -> None:
     assert passed.status_code == 200
     assert passed.json()["state"] == "tested"
 
+    blocked = client.post(
+        f"/v1/debug-runs/{workflow_id}/transitions",
+        json={
+            "target": "verified",
+            "actor": "reviewer",
+            "reason": "Manual reports are not independent execution evidence.",
+        },
+    )
+    assert blocked.status_code == 409
+
+    monkeypatch.setattr("app.main.settings.execution_signing_secret", "test-signing-secret-that-is-long-enough-32")
+    payload = {
+        "workflow_id": workflow_id,
+        "patch_sha256": digest,
+        "suite": "pytest",
+        "outcome": "passed",
+        "exit_code": 0,
+        "timed_out": False,
+        "duration_seconds": 1.25,
+        "workspace_sha256": "a" * 64,
+        "output": "5 passed",
+        "output_truncated": False,
+        "actor": "trusted-runner",
+    }
+    body = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode("utf-8")
+    signature = hmac.new(
+        b"test-signing-secret-that-is-long-enough-32", body, hashlib.sha256
+    ).hexdigest()
+    execution = client.post(
+        f"/v1/debug-runs/{workflow_id}/execution-results",
+        content=body,
+        headers={"Content-Type": "application/json", "X-DebugLens-Signature": signature},
+    )
+    assert execution.status_code == 200
+    assert execution.json()["execution_reports"][0]["workspace_sha256"] == "a" * 64
+
     verified = client.post(
         f"/v1/debug-runs/{workflow_id}/transitions",
         json={
             "target": "verified",
             "actor": "reviewer",
-            "reason": "Reviewed the exact diff and test output.",
+            "reason": "Reviewed the exact diff and trusted execution report.",
         },
     )
     assert verified.status_code == 200
