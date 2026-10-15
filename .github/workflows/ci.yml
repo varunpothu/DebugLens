@@ -32,3 +32,29 @@ jobs:
         run: pytest -q
       - name: Type check
         run: mypy app
+
+  worker-container:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build isolated worker image
+        run: docker build -f runner/Dockerfile -t debuglens-test-worker:ci .
+      - name: Run approved suites in network-disabled containers
+        shell: bash
+        run: |
+          set -euo pipefail
+          for suite in pytest ruff mypy; do
+            echo "Running isolated suite: $suite"
+            docker run --rm \
+              --network none \
+              --read-only \
+              --cap-drop ALL \
+              --security-opt no-new-privileges:true \
+              --memory 512m \
+              --cpus 1 \
+              --pids-limit 128 \
+              --tmpfs /tmp:rw,noexec,nosuid,size=64m \
+              --mount "type=bind,src=${GITHUB_WORKSPACE},dst=/workspace,readonly" \
+              -e "DEBUGLENS_TEST_SUITE=${suite}" \
+              debuglens-test-worker:ci
+          done
