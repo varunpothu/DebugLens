@@ -215,10 +215,12 @@ def _recover_expired(db: sqlite3.Connection, now: datetime) -> None:
             status = "queued"
         else:
             status = "failed"
+        dead_letter = int(not row["cancel_requested"] and row["attempts"] >= row["max_attempts"])
         db.execute(
             """UPDATE execution_jobs SET status=?,worker_id=NULL,lease_until=NULL,
-               updated_at=?,output=CASE WHEN output='' THEN ? ELSE output END WHERE job_id=?""",
-            (status, _timestamp(now), "Worker lease expired; job recovered by queue.", row["job_id"]),
+               dead_letter=MAX(dead_letter,?),updated_at=?,
+               output=CASE WHEN output='' THEN ? ELSE output END WHERE job_id=?""",
+            (status, dead_letter, _timestamp(now), "Worker lease expired; job recovered by queue.", row["job_id"]),
         )
 
 
