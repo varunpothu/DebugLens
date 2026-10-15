@@ -15,6 +15,10 @@ class Settings(BaseSettings):
     vision_api_key: str = ""
     vision_model: str = ""
     vision_base_url: str = "https://api.openai.com/v1"
+    anthropic_api_key: str = ""
+    anthropic_model: str = "claude-3-5-sonnet-latest"
+    gemini_api_key: str = ""
+    gemini_model: str = "gemini-2.5-flash"
     vision_timeout_seconds: float = Field(default=45.0, ge=1.0, le=120.0)
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
