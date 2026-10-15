@@ -165,6 +165,7 @@ def attach_browser_evidence(
     *,
     actor: str,
     evidence: dict[str, Any],
+    investigation_pipeline: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Attach minimised browser evidence and record who initiated the capture."""
     initialise_store()
@@ -178,6 +179,9 @@ def attach_browser_evidence(
             raise KeyError(workflow_id)
         record = _decode_row(row)
         events = record["events"]
+        analysis = record["analysis"]
+        if investigation_pipeline is not None:
+            analysis["investigation_pipeline"] = investigation_pipeline
         now = datetime.now(timezone.utc).isoformat()
         events.append({
             "event_type": "browser_evidence_attached",
@@ -190,10 +194,11 @@ def attach_browser_evidence(
             "timestamp": now,
         })
         db.execute(
-            """UPDATE debug_runs SET browser_evidence_json = ?, updated_at = ?, events_json = ?
+            """UPDATE debug_runs SET browser_evidence_json = ?, analysis_json = ?, updated_at = ?, events_json = ?
                WHERE workflow_id = ?""",
             (
                 json.dumps(evidence, separators=(",", ":")),
+                json.dumps(analysis, separators=(",", ":")),
                 now,
                 json.dumps(events, separators=(",", ":")),
                 workflow_id,
