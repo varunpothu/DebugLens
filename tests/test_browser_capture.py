@@ -1,6 +1,32 @@
 import pytest
 
-from app.browser.capture import UnsafeTargetError, validate_target_url
+from app.browser.capture import UnsafeTargetError, _assert_public_dns_resolution, validate_target_url
+
+
+def test_dns_preflight_rejects_private_resolutions(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "app.browser.capture.socket.getaddrinfo",
+        lambda *args, **kwargs: [(2, 1, 6, "", ("192.168.1.10", 0))],
+    )
+    with pytest.raises(UnsafeTargetError, match="private or non-global"):
+        _assert_public_dns_resolution("demo.example.org")
+
+
+def test_dns_preflight_accepts_public_resolution(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "app.browser.capture.socket.getaddrinfo",
+        lambda *args, **kwargs: [(2, 1, 6, "", ("8.8.8.8", 0))],
+    )
+    _assert_public_dns_resolution("demo.example.org")
+
+
+def test_dns_preflight_rejects_unresolvable_hostname(monkeypatch) -> None:
+    def fail_resolution(*args, **kwargs):
+        raise OSError("DNS unavailable")
+
+    monkeypatch.setattr("app.browser.capture.socket.getaddrinfo", fail_resolution)
+    with pytest.raises(UnsafeTargetError, match="could not be resolved"):
+        _assert_public_dns_resolution("demo.example.org")
 
 
 def test_allowlisted_hostname_is_accepted() -> None:
