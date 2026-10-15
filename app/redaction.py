@@ -40,3 +40,21 @@ def redact_sensitive_text(value: str | None) -> str | None:
     for pattern in _PATTERNS[1:]:
         redacted = pattern.sub(_REPLACEMENT, redacted)
     return redacted
+
+
+
+def redact_sensitive_data(value: object) -> object:
+    """Recursively redact strings in JSON-like data before external provider calls.
+
+    Mapping keys and non-string scalar values are preserved. The return shape mirrors
+    dicts/lists/tuples, so callers can safely serialise the redacted payload afterward.
+    """
+    if isinstance(value, str):
+        return redact_sensitive_text(value)
+    if isinstance(value, dict):
+        return {key: redact_sensitive_data(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [redact_sensitive_data(item) for item in value]
+    if isinstance(value, tuple):
+        return tuple(redact_sensitive_data(item) for item in value)
+    return value
