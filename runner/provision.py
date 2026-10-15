@@ -125,6 +125,7 @@ def _apply_unified_diff(workspace: Path, patch_text: str, target_file: str) -> N
         if not match:
             raise ProvisionError("Patch contains unsupported or malformed unified-diff metadata.")
         old_start = int(match.group(1))
+        new_start = int(match.group(3))
         old_count = int(match.group(2) or "1")
         new_count = int(match.group(4) or "1")
         if old_start < 1:
@@ -133,6 +134,8 @@ def _apply_unified_diff(workspace: Path, patch_text: str, target_file: str) -> N
         if hunk_start < source_cursor or hunk_start > len(original):
             raise ProvisionError("Patch hunks overlap or reference lines outside the target.")
         output.extend(original[source_cursor:hunk_start])
+        if new_start != len(output) + 1:
+            raise ProvisionError("Patch hunk does not align with the new-file line numbers.")
         source_cursor = hunk_start
         old_seen = 0
         new_seen = 0
