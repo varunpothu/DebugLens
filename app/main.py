@@ -296,6 +296,7 @@ async def collect_browser_evidence(
         "console_error_types": capture.console_errors,
         "page_error_types": capture.page_errors,
         "failed_request_count": capture.failed_request_count,
+        "accessibility_audit": capture.accessibility_report,
         "screenshot_sha256": screenshot_analysis.screenshot_sha256,
         "screenshot_analysis": screenshot_analysis.model_dump(mode="json"),
         "raw_screenshot_retained": False,
