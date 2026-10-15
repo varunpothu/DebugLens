@@ -22,3 +22,9 @@ build/
 playwright-report/
 test-results/
 artifacts/private/
+data/
+*.db
+*.db-shm
+*.db-wal
+terraform.tfstate
+terraform.tfstate.*
