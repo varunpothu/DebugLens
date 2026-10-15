@@ -59,7 +59,7 @@ def test_list_runs_returns_newest_first_and_respects_limit() -> None:
 
 def test_transition_requires_legal_state_and_audit_reason() -> None:
     run = create_run(bug_report=None, screenshot_sha256="a" * 64, analysis=sample_analysis())
-    with pytest.raises(ValueError, match="Illegal workflow transition"):
+    with pytest.raises(ValueError, match="Verification requires a proposed patch"):
         transition_run(
             run["workflow_id"],
             target=WorkflowState.VERIFIED,
@@ -167,3 +167,42 @@ def test_cannot_mark_verified_without_patch_and_passing_test() -> None:
             actor="reviewer",
             reason="Skip required checks",
         )
+
+
+def test_failed_test_can_be_followed_by_a_revised_patch() -> None:
+    run = create_run(bug_report="Issue", screenshot_sha256="a" * 64, analysis=sample_analysis())
+    run = transition_run(
+        run["workflow_id"],
+        target=WorkflowState.REPRODUCED,
+        actor="reviewer",
+        reason="Reproduced on local test page.",
+    )
+    first_diff = "diff --git a/a.css b/a.css\n-old\n+bad"
+    run = create_patch_proposal(
+        run["workflow_id"],
+        patch_diff=first_diff,
+        rationale="First attempt",
+        risk="low",
+        rollback_plan="Revert the diff",
+        actor="reviewer",
+    )
+    first_digest = sha256(first_diff.encode("utf-8")).hexdigest()
+    run = record_test_result(
+        run["workflow_id"],
+        patch_sha256=first_digest,
+        outcome="failed",
+        command="pytest -q",
+        summary="Regression test still fails.",
+        actor="reviewer",
+    )
+    revised_diff = "diff --git a/a.css b/a.css\n-old\n+fixed"
+    run = create_patch_proposal(
+        run["workflow_id"],
+        patch_diff=revised_diff,
+        rationale="Adjust the selector based on test failure.",
+        risk="low",
+        rollback_plan="Revert the revised diff",
+        actor="reviewer",
+    )
+    assert run["state"] == WorkflowState.PATCH_PROPOSED.value
+    assert run["patch_proposal"]["patch_sha256"] == sha256(revised_diff.encode("utf-8")).hexdigest()
