@@ -21,9 +21,9 @@ if st.sidebar.button("Check API health"):
 
 LEGAL_NEXT_STATES = {
     "human_review": ["reproduced", "rejected", "cancelled"],
-    "reproduced": ["patch_proposed", "rejected", "failed", "cancelled"],
-    "patch_proposed": ["tested", "rejected", "failed", "cancelled"],
-    "tested": ["verified", "patch_proposed", "rejected", "failed", "cancelled"],
+    "reproduced": ["rejected", "failed", "cancelled"],
+    "patch_proposed": ["rejected", "failed", "cancelled"],
+    "tested": ["verified", "rejected", "failed", "cancelled"],
     "received": ["validated", "failed", "cancelled"],
     "validated": ["evidence_collected", "failed", "cancelled"],
     "evidence_collected": ["hypotheses_ready", "failed", "cancelled"],
@@ -164,6 +164,72 @@ with review_tab:
                     st.error(f"Browser evidence was not collected: {exc}")
         st.subheader("Investigation pipeline")
         st.json(run["analysis"].get("investigation_pipeline", {}))
+
+        if run["state"] == "reproduced":
+            st.subheader("Propose a patch")
+            st.warning("This records a proposed diff only. DebugLens does not apply or execute it.")
+            with st.form("patch_proposal_form"):
+                patch_diff = st.text_area("Unified diff", height=240, max_chars=200000)
+                rationale = st.text_area("Why this change should fix the issue", max_chars=3000)
+                risk = st.selectbox("Risk", ["low", "medium", "high", "critical"])
+                rollback_plan = st.text_area("Rollback plan", max_chars=2000)
+                patch_actor = st.text_input("Proposed by", value="local-reviewer", max_chars=120)
+                patch_submitted = st.form_submit_button("Save patch proposal")
+            if patch_submitted:
+                try:
+                    updated = api_post(
+                        f"/v1/debug-runs/{run['workflow_id']}/patch-proposals",
+                        json={
+                            "patch_diff": patch_diff,
+                            "rationale": rationale,
+                            "risk": risk,
+                            "rollback_plan": rollback_plan,
+                            "actor": patch_actor,
+                        },
+                    )
+                    st.session_state["debuglens_loaded_run"] = updated
+                    st.success("Patch proposal saved and bound to its SHA-256 digest.")
+                    st.rerun()
+                except (requests.RequestException, RuntimeError) as exc:
+                    st.error(f"Patch proposal was not saved: {exc}")
+
+        proposal = run.get("patch_proposal")
+        if proposal:
+            st.subheader("Current patch proposal")
+            st.code(proposal["patch_diff"], language="diff")
+            st.write({"SHA-256": proposal["patch_sha256"], "Risk": proposal["risk"], "Author": proposal["actor"]})
+            st.write(proposal["rationale"])
+            st.write("Rollback plan: " + proposal["rollback_plan"])
+            if run["state"] in {"patch_proposed", "tested"}:
+                st.subheader("Record test results")
+                st.caption("Run the command yourself in an isolated environment. This form records your reported result; it does not execute the command.")
+                with st.form("test_result_form"):
+                    test_outcome = st.selectbox("Outcome", ["passed", "failed"])
+                    test_command = st.text_input("Command executed", value="pytest -q", max_chars=500)
+                    test_summary = st.text_area("Test output summary", max_chars=2000)
+                    test_actor = st.text_input("Tested by", value="local-reviewer", max_chars=120)
+                    test_submitted = st.form_submit_button("Record test result")
+                if test_submitted:
+                    try:
+                        updated = api_post(
+                            f"/v1/debug-runs/{run['workflow_id']}/test-results",
+                            json={
+                                "patch_sha256": proposal["patch_sha256"],
+                                "outcome": test_outcome,
+                                "command": test_command,
+                                "summary": test_summary,
+                                "actor": test_actor,
+                            },
+                        )
+                        st.session_state["debuglens_loaded_run"] = updated
+                        st.success("Test result recorded against the exact patch digest.")
+                        st.rerun()
+                    except (requests.RequestException, RuntimeError) as exc:
+                        st.error(f"Test result was not recorded: {exc}")
+            if run.get("test_reports"):
+                st.subheader("Recorded test reports")
+                st.dataframe(run["test_reports"], use_container_width=True, hide_index=True)
+
         st.subheader("Audit history")
         st.dataframe(run["events"], use_container_width=True, hide_index=True)
 
