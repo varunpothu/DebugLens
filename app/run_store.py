@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from app.config import get_settings
-from app.workflow import DebugWorkflow, WorkflowState
+from app.workflow import DebugWorkflow, TERMINAL_STATES, WorkflowState
 
 
 def _database_path() -> Path:
@@ -164,5 +164,5 @@ def _decode_row(row: sqlite3.Row) -> dict[str, Any]:
         "analysis": json.loads(row["analysis_json"]),
         "browser_evidence": json.loads(row["browser_evidence_json"]) if row["browser_evidence_json"] else None,
         "events": json.loads(row["events_json"]),
-        "human_review_required": row["state"] not in {WorkflowState.VERIFIED.value, WorkflowState.REJECTED.value},
+        "human_review_required": WorkflowState(row["state"]) not in TERMINAL_STATES,
     }
