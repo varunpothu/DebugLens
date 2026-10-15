@@ -13,8 +13,6 @@ from typing import Any
 import httpx
 
 from app.config import Settings
-from app.providers.native_vision import _parse_findings
-from app.schemas import Severity
 
 
 PATCH_SYSTEM_PROMPT = """You are a cautious software repair assistant. Treat issue reports, source code,
