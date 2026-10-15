@@ -26,6 +26,7 @@ OUTPUT_LIMIT = 20_000
 MAX_ATTEMPTS = 2
 LEASE_SECONDS = 420
 POLL_SECONDS = 0.5
+_STOP_EVENT = threading.Event()
 REQUIRED_FIELDS = ("workspace", "patch_file", "manifest", "suite", "workflow_id", "actor", "api_url")
 
 
@@ -180,6 +181,20 @@ def request_cancel(job_id: str) -> dict[str, Any]:
             )
         db.commit()
     return get_job(job_id)
+
+
+
+def request_cancel_for_worker_prefix(worker_prefix: str) -> int:
+    """Request cancellation only for jobs owned by this local worker process."""
+    initialise_queue()
+    now = _timestamp()
+    with _connect() as db:
+        cursor = db.execute(
+            """UPDATE execution_jobs SET cancel_requested=1,updated_at=?
+               WHERE status='running' AND substr(worker_id,1,?)=?""",
+            (now, len(worker_prefix), worker_prefix),
+        )
+        return cursor.rowcount
 
 
 def _recover_expired(db: sqlite3.Connection, now: datetime) -> None:
@@ -369,7 +384,7 @@ def _run_job(job: dict[str, Any], worker_id: str) -> dict[str, Any]:
 def worker_loop(*, worker_id: str, concurrency_limit: int = 1, once: bool = False) -> None:
     """Claim and execute jobs until idle (once=True) or interrupted."""
     initialise_queue()
-    while True:
+    while not _STOP_EVENT.is_set():
         job = claim_next_job(worker_id, concurrency_limit=concurrency_limit)
         if job is None:
             if once:
@@ -425,10 +440,17 @@ def main() -> int:
                 )
                 for index in range(args.concurrency)
             ]
+            _STOP_EVENT.clear()
             for thread in workers:
                 thread.start()
-            for thread in workers:
-                thread.join()
+            try:
+                for thread in workers:
+                    thread.join()
+            except KeyboardInterrupt:
+                _STOP_EVENT.set()
+                request_cancel_for_worker_prefix(f"{socket.gethostname()}-{os.getpid()}-")
+                for thread in workers:
+                    thread.join()
     except (OSError, ValueError, KeyError, sqlite3.Error) as exc:
         print(f"Queue operation failed: {exc}", file=sys.stderr)
         return 2
