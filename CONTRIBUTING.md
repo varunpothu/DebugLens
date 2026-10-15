@@ -2,13 +2,30 @@
 
 Thank you for helping improve DebugLens.
 
+## Branch names
+
+Keep branch names short and describe the work:
+
+| Prefix | Use it for | Example |
+| --- | --- | --- |
+| `dev` | Shared development branch | `dev` |
+| `feature/` | A new capability | `feature/dashboard` |
+| `fix/` | A bug fix | `fix/login-error` |
+| `docs/` | Documentation only | `docs/setup-guide` |
+| `test/` | Test-only changes | `test/api-cases` |
+| `main` | Stable, reviewed code | `main` |
+
+Start new work from `dev`, use one short-lived branch per task, and open a pull request back to `dev`. Promote tested changes from `dev` to `main` when they are ready. Do not create empty branches just to reserve names.
+
+Dependency-update branches named `dependabot/...` are created automatically by GitHub. Leave them in place while their pull requests are open; review and merge or close the corresponding pull request rather than renaming its branch manually.
+
 ## Development setup
 
 Python 3.11 or 3.12 is recommended.
 
 ~~~powershell
 py -3.12 -m venv .venv
-.\.venv\Scripts\Activate.ps1
+.\\.venv\\Scripts\\Activate.ps1
 python -m pip install --upgrade pip
 pip install -e ".[dev,ui,browser]"
 ~~~
@@ -17,7 +34,7 @@ Copy `.env.example` to `.env` for local configuration. Never commit credentials,
 
 ## Before submitting a change
 
-~~~powershell
+~~~
 ruff check .
 pytest -q
 mypy app
