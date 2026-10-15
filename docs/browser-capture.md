@@ -1,6 +1,6 @@
 # Browser evidence capture
 
-The optional Playwright collector captures a screenshot, page title, viewport metadata, tag counts, console error types, page error classes, and a failed-request count. It deliberately avoids storing raw DOM text and full request URLs, which may contain personal data or secrets.
+The optional Playwright collector captures a viewport-sized screenshot, page title, viewport metadata, bounded DOM tag counts (up to 10,000 elements), console error types, page error classes, and a failed-request count. It reports when DOM counting was truncated and deliberately avoids storing raw DOM text and full request URLs, which may contain personal data or secrets.
 
 ## Guardrails
 
@@ -14,4 +14,4 @@ The optional Playwright collector captures a screenshot, page title, viewport me
 
 ## Scope and limitations
 
-The collector is not yet wired into the public API or the workflow state machine. The next integration must add tenant-aware authorisation, job timeouts, resource quotas, a queue, isolated worker deployment, DNS/egress enforcement, artifact expiry, and integration tests against a controlled demo site. Never enable it for arbitrary user-supplied URLs.
+The collector is wired to the optional `/v1/debug-runs/{workflow_id}/browser-evidence` API endpoint and attaches minimised evidence to a run. The endpoint is disabled by default. Before use beyond a local controlled demo, add tenant-aware authorisation, isolated worker deployment, network egress enforcement, DNS rebinding protection, concurrency/resource quotas, cancellation, artifact expiry, and integration tests against a controlled demo site. Never enable it for arbitrary user-supplied URLs.
