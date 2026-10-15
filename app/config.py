@@ -1,0 +1,27 @@
+"""Typed configuration with safe local defaults."""
+
+from functools import lru_cache
+
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    app_name: str = "DebugLens"
+    app_env: str = "local"
+    log_level: str = "INFO"
+    analysis_provider: str = "mock"
+    max_upload_bytes: int = Field(default=10 * 1024 * 1024, ge=1024, le=25 * 1024 * 1024)
+    allowed_origins: str = "http://localhost:8501,http://127.0.0.1:8501"
+
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+
+    @property
+    def cors_origins(self) -> list[str]:
+        return [origin.strip() for origin in self.allowed_origins.split(",") if origin.strip()]
+
+
+@lru_cache(maxsize=1)
+def get_settings() -> Settings:
+    """Return cached settings; clear the cache in tests when changing environment."""
+    return Settings()
