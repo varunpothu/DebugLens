@@ -63,7 +63,8 @@ Python 3.11 or 3.12 recommended.
 py -3.12 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
-pip install -e ".[dev,ui]"
+pip install -e ".[dev,ui,browser]"
+playwright install chromium
 Copy-Item .env.example .env
 uvicorn app.main:app --reload
 ~~~
@@ -77,6 +78,8 @@ pytest -q
 ruff check .
 mypy app
 ~~~
+
+The browser extra installs Playwright; the second command downloads Chromium for local testing. Browser capture is a library component and is not exposed as an API endpoint yet.
 
 Run the UI in a second terminal:
 
