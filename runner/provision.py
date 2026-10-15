@@ -201,10 +201,10 @@ def provision_workspace(
         patch_text = patch_bytes.decode("utf-8")
     except UnicodeDecodeError as exc:
         raise ProvisionError("Patch must be UTF-8 text.") from exc
-    base_digest = workspace_digest(base_workspace)
     output_workspace.parent.mkdir(parents=True, exist_ok=True)
     try:
         _copy_base(base_workspace, output_workspace)
+        base_digest = workspace_digest(base_workspace)
         _apply_unified_diff(output_workspace, patch_text, target_file)
         final_digest = workspace_digest(output_workspace)
     except Exception:
