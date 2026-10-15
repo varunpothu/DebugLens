@@ -12,6 +12,7 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.base import RequestResponseEndpoint
 from starlette.responses import Response
 
+from app.agents import build_investigation_pipeline
 from app.config import get_settings
 from app.schemas import AnalysisResponse, BrowserCaptureRequest, ReadinessResponse, TransitionRequest
 from app.run_store import attach_browser_evidence, create_run, get_run, initialise_store, list_runs, transition_run
@@ -144,10 +145,12 @@ async def create_debug_run(
         logger.exception("Unexpected analysis failure")
         raise HTTPException(status_code=502, detail="Analysis failed; no debugging run was created.") from exc
     try:
+        analysis_payload = analysis.model_dump(mode="json")
+        analysis_payload["investigation_pipeline"] = build_investigation_pipeline(analysis_payload)
         return create_run(
             bug_report=bug_report,
             screenshot_sha256=analysis.screenshot_sha256,
-            analysis=analysis.model_dump(mode="json"),
+            analysis=analysis_payload,
         )
     except Exception as exc:
         logger.exception("Could not persist debugging run")
@@ -252,7 +255,13 @@ async def collect_browser_evidence(
         "raw_screenshot_retained": False,
     }
     try:
-        return attach_browser_evidence(workflow_id, actor=request.actor, evidence=evidence)
+        pipeline = build_investigation_pipeline(run["analysis"], evidence)
+        return attach_browser_evidence(
+            workflow_id,
+            actor=request.actor,
+            evidence=evidence,
+            investigation_pipeline=pipeline,
+        )
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="Debugging run not found.") from exc
     except ValueError as exc:
