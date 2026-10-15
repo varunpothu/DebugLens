@@ -200,3 +200,11 @@ The workflow module models legal transitions from RECEIVED through evidence coll
 7. AWS: ECS/Fargate, S3, SQS, Step Functions approval callbacks, Secrets Manager, CloudWatch and Terraform after review.
 
 See docs/architecture.md, docs/agent-workflow.md, docs/browser-capture.md, docs/end-to-end-workflow.md, docs/model-evaluation.md, docs/ai-assurance.md, docs/threat-model.md, docs/evaluation.md, docs/operations.md, and docs/roadmap.md. The AWS artifact-storage Terraform baseline is documented in infra/terraform/README.md.
+
+
+## Project governance
+
+- [Security policy](SECURITY.md)
+- [Contribution and quality checklist](CONTRIBUTING.md)
+- [AI assurance and governance](docs/ai-assurance.md)
+- [Threat model](docs/threat-model.md)
