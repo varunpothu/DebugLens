@@ -129,7 +129,7 @@ locals {
 }
 
 resource "aws_iam_role" "api" {
-  name               = "debuglens-api-artifacts"
+  name               = "debuglens-api-${var.environment_name}-artifacts"
   assume_role_policy = jsonencode(local.ecs_task_assume_role)
   description        = "Least-privilege task role for DebugLens API artifact operations."
   tags               = { Component = "api-task-role" }
@@ -159,7 +159,7 @@ resource "aws_iam_role_policy" "api_artifacts" {
 }
 
 resource "aws_iam_role" "worker" {
-  name               = "debuglens-worker-artifacts"
+  name               = "debuglens-worker-${var.environment_name}-artifacts"
   assume_role_policy = jsonencode(local.ecs_task_assume_role)
   description        = "Least-privilege task role for DebugLens isolated worker artifact operations."
   tags               = { Component = "worker-task-role" }
