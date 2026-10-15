@@ -94,6 +94,12 @@ def execute(
             truncated = bool(worker_result.get("output_truncated", False))
             if outcome not in {"passed", "failed", "timed_out"}:
                 outcome = "failed"
+            if worker_result.get("suite") != suite or worker_result.get("workspace_sha256") != snapshot:
+                outcome = "failed"
+                output_text = "Worker result suite or workspace digest does not match the host snapshot."
+                exit_code = completed.returncode
+                timed_out = False
+                truncated = False
             if outcome == "passed" and (completed.returncode != 0 or exit_code != 0 or timed_out):
                 outcome = "failed"
     except subprocess.TimeoutExpired as exc:
@@ -122,6 +128,28 @@ def execute(
         "output_truncated": truncated,
     }
     return result, (0 if outcome == "passed" else 1)
+
+
+def verify_manifest(*, workspace: Path, manifest_path: Path, patch_file: Path) -> dict[str, object]:
+    """Verify the provisioner manifest against the actual workspace and patch bytes."""
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if not isinstance(manifest, dict) or manifest.get("schema_version") != 1:
+        raise ValueError("A valid DebugLens workspace manifest is required.")
+    for field in ("base_revision", "base_workspace_sha256", "patch_sha256", "target_file", "workspace_sha256"):
+        value = manifest.get(field)
+        if not isinstance(value, str) or not value:
+            raise ValueError(f"Workspace manifest is missing {field}.")
+    for field in ("base_workspace_sha256", "patch_sha256", "workspace_sha256"):
+        value = str(manifest[field])
+        if len(value) != 64 or any(char not in "0123456789abcdef" for char in value):
+            raise ValueError(f"Workspace manifest has an invalid {field}.")
+    actual_patch_sha = hashlib.sha256(patch_file.read_bytes()).hexdigest()
+    if not hmac.compare_digest(actual_patch_sha, str(manifest["patch_sha256"])):
+        raise ValueError("Patch file digest does not match the workspace manifest.")
+    actual_workspace_sha = workspace_digest(workspace.expanduser().resolve(strict=True))
+    if not hmac.compare_digest(actual_workspace_sha, str(manifest["workspace_sha256"])):
+        raise ValueError("Workspace digest does not match the workspace manifest.")
+    return manifest
 
 
 def signed_payload(
@@ -203,19 +231,20 @@ def main() -> int:
     parser.add_argument("--workspace", required=True, type=Path, help="Reviewed source snapshot directory")
     parser.add_argument("--suite", required=True, choices=sorted(ALLOWED_SUITES))
     parser.add_argument("--workflow-id", required=True)
-    parser.add_argument("--patch-sha256", required=True)
+    parser.add_argument("--patch-file", required=True, type=Path, help="Exact reviewed unified diff used to provision the workspace")
+    parser.add_argument("--manifest", required=True, type=Path, help="Manifest produced by runner.provision")
     parser.add_argument("--actor", required=True)
     parser.add_argument("--api-url", default="http://127.0.0.1:8000")
-    parser.add_argument("--image", default="debuglens-test-worker:local")
     args = parser.parse_args()
 
     secret = os.environ.get("DEBUGLENS_EXECUTION_SIGNING_SECRET", "")
     api_token = os.environ.get("DEBUGLENS_API_ACCESS_TOKEN", "")
     try:
-        result, exit_code = execute(workspace=args.workspace, suite=args.suite, image=args.image)
+        manifest = verify_manifest(workspace=args.workspace, manifest_path=args.manifest, patch_file=args.patch_file)
+        result, exit_code = execute(workspace=args.workspace, suite=args.suite, image="debuglens-test-worker:local")
         body, signature = signed_payload(
             workflow_id=args.workflow_id,
-            patch_sha256=args.patch_sha256,
+            patch_sha256=str(manifest["patch_sha256"]),
             suite=args.suite,
             result=result,
             actor=args.actor,
