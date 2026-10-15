@@ -86,11 +86,45 @@ python -m runner.orchestrate \
 
 The manifest must be stored outside the provisioned workspace. The output directory must not already exist. The provisioner supports existing UTF-8 text files only; file creation/deletion, multiple-file diffs, binary changes, rename/copy operations and fuzzy patching are deliberately unsupported. The base revision must now be the full 40-character SHA of the checked-out Git HEAD. Provisioning rejects a different HEAD, a dirty working tree, untracked files, and a source directory that is not the repository root. The manifest stores that verified commit SHA alongside the base-tree digest. Review the manifest before trusting a result.
 
+
+## Durable local execution queue
+
+The optional SQLite queue adds idempotent submissions, bounded retries for worker/infrastructure failures, expiring worker leases, cancellation requests, output caps, and a global concurrency limit across queue workers sharing the same database. It is a local trusted-host utility, not a public API. The signing secret and API token remain in the worker process environment and are never stored in job payloads.
+
+Enqueue a job using the same provisioned workspace, patch, and manifest:
+
+```bash
+python -m runner.job_queue enqueue \
+  --workspace ./provisioned-workspace \
+  --patch-file ./reviewed.patch \
+  --manifest ./provisioned-workspace-manifest.json \
+  --suite pytest \
+  --workflow-id YOUR_WORKFLOW_ID \
+  --actor local-reviewer \
+  --api-url http://127.0.0.1:8000 \
+  --idempotency-key workflow-123-pytest-v1
+```
+
+Start a worker with a maximum of two concurrent jobs:
+
+```bash
+python -m runner.job_queue worker --concurrency 2
+```
+
+Inspect and cancel jobs:
+
+```bash
+python -m runner.job_queue list --limit 20
+python -m runner.job_queue cancel YOUR_JOB_ID
+```
+
+Set `DEBUGLENS_QUEUE_DATABASE` to choose a local queue database path. Reusing an idempotency key with the same payload returns the existing job; reusing it with a different payload is rejected. Running cancellation sends an interrupt to the orchestrator process group and escalates if necessary. A worker lease expires after seven minutes; another worker can recover a stale job, with at most two attempts. Use the queue only on a trusted host with Docker access. Review cancellation and container cleanup behavior in your own Docker runtime before production use.
+
 ## Important limitations
 
 - The worker container is a sandbox boundary only when launched with the restrictions above. Running `runner/worker.py` directly on a host is not isolated.
 - The workspace must be created and reviewed by a trusted orchestrator. The provisioner verifies the base Git commit and clean tree, applies the supported diff without executing code, and records the patch/workspace digests; the worker itself does not apply patches.
 - The worker's output is evidence, not approval. Human review and explicit approval remain required.
 - The manifest is a local integrity check, not a signed attestation of the base revision. Protect the trusted host, patch file, manifest, and Docker daemon; an operator who controls all inputs can forge them.
-- Remaining integration work includes authenticated job submission hardening, queueing/cancellation, container lifecycle management, and production security review. The API persists the suite and workspace digest and rejects verification when the latest trusted execution report does not match the current patch digest.
+- Remaining integration work includes authenticated job submission hardening, independent container lifecycle monitoring, and production security review. The API persists the suite and workspace digest and rejects verification when the latest trusted execution report does not match the current patch digest.
 - Output is redirected to a temporary file inside the container and only the first 20,001 bytes are read into memory. The container's tmpfs size and memory limit remain important safety boundaries.
