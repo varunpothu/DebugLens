@@ -16,6 +16,9 @@ def test_allowlisted_hostname_is_accepted() -> None:
         "http://169.254.169.254/latest/meta-data",
         "http://192.168.1.1/",
         "https://user:password@demo.example.org/",
+        "https://demo.example.org:8443/",
+        "http://demo.example.org:8080/",
+        "https://demo.example.org:invalid/",
         "https://unapproved.example.net/",
     ],
 )
