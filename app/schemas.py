@@ -111,3 +111,20 @@ class PatchSuggestionRequest(BaseModel):
     target_file: str = Field(min_length=1, max_length=240)
     source_context: str = Field(min_length=1, max_length=50000)
     actor: str = Field(min_length=1, max_length=120)
+
+
+class ExecutionResultRequest(BaseModel):
+    """Result emitted by the trusted Docker orchestrator, not the worker alone."""
+
+    model_config = ConfigDict(extra="forbid")
+    workflow_id: str = Field(min_length=1, max_length=80)
+    patch_sha256: str = Field(pattern="^[a-f0-9]{64}$")
+    suite: str = Field(pattern="^(pytest|ruff|mypy)$")
+    outcome: str = Field(pattern="^(passed|failed|timed_out)$")
+    exit_code: int | None = Field(default=None, ge=-255, le=255)
+    timed_out: bool
+    duration_seconds: float = Field(ge=0, le=300)
+    workspace_sha256: str = Field(pattern="^[a-f0-9]{64}$")
+    output: str = Field(max_length=20000)
+    output_truncated: bool
+    actor: str = Field(min_length=1, max_length=120)
