@@ -9,7 +9,7 @@ import argparse
 import json
 import re
 import subprocess
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Any
 
 MANAGED_LABEL = "com.debuglens.managed=true"
