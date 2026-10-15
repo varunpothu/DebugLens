@@ -37,11 +37,11 @@
 
 - [x] Explicit workflow state machine and audit events
 - [x] Human review dashboard for run history and legal transitions
-- [x] Human-authored patch proposals with digest, rationale, risk, and rollback plan
+- [x] Human-authored and provider-assisted patch proposals with digest, rationale, risk, and rollback plan
 - [x] Test-result records tied to the exact patch digest
 - [x] Gate verification on a passing report for the current patch digest
 - [ ] Implement isolated test execution and independently captured test logs
-- [ ] Implement patch generation from source context without automatic application
+- [x] Implement bounded provider-backed patch suggestion from user-supplied source context without automatic application
 - [ ] Add bounded LLM specialist agents for diagnosis and test planning
 - [ ] Add durable orchestration, idempotency, retries, timeout handling, cancellation, and dead-letter queue
 - [ ] Enforce tool permissions and human approval in code, not only in prompts
