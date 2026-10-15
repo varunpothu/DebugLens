@@ -4,7 +4,7 @@
 
 DebugLens turns a UI failure report into a traceable investigation. It validates screenshots, records evidence metadata, optionally calls a vision-capable model, returns structured findings, and makes clear what remains unverified. The longer-term workflow correlates screenshots with browser/runtime evidence, proposes regression tests, and prepares fixes for human review.
 
-> **Current maturity:** working foundation with a deterministic mock provider, opt-in OpenAI-compatible, Anthropic, and Gemini vision adapters, a side-by-side model evaluation harness, typed evidence contracts, API tests, an auditable workflow state machine, and CI. Browser execution, automated patching, cloud deployment, and production-grade multi-agent orchestration remain roadmap items. This is not yet a production-ready autonomous debugger.
+> **Current maturity:** local end-to-end debugging runs are now persisted in SQLite, with audit history and human-review transitions. The project includes a deterministic mock provider, opt-in OpenAI-compatible, Anthropic, and Gemini vision adapters, a model evaluation harness, an optional allow-listed Playwright capture endpoint, API tests, CI, and a private S3 Terraform baseline. Automated repair, full agent orchestration, authentication, production-grade isolation, and full AWS application deployment remain incomplete. This is not yet safe to expose as a public service.
 
 ## Product principles
 
@@ -21,7 +21,7 @@ DebugLens turns a UI failure report into a traceable investigation. It validates
 Screenshot + bug report
         |
         v
-FastAPI ingress -> validation, upload limits, correlation ID
+FastAPI ingress -> validation, upload limits, correlation ID\n        |\n        v\nSQLite run store -> workflow state + audit trail
         |
         v
 Image validation -> format, dimensions, SHA-256
@@ -40,7 +40,7 @@ Typed findings + evidence + limitations + test plan
 Model comparison harness -> benchmark and human adjudication
               |
               v
-Planned: browser evidence -> agent workflow -> human approval
+Optional allow-listed browser capture -> evidence attachment -> human approval
               |
               v
 Planned: sandboxed tests -> proposed patch -> human verification
@@ -48,7 +48,7 @@ Planned: sandboxed tests -> proposed patch -> human verification
 
 ## Repository layout
 
-- app/: FastAPI API, typed contracts, multimodal adapters, evaluation harness, workflow state machine.
+- app/: FastAPI API, typed contracts, multimodal adapters, evaluation harness, SQLite run store, workflow state machine and optional browser capture.
 - tests/: API, image validation, model comparison and workflow transition tests.
 - frontend/: optional Streamlit upload client.
 - docs/: architecture, agent workflow, threat model, evaluation, operations, roadmap.
@@ -130,7 +130,19 @@ Example:
 curl.exe -X POST http://127.0.0.1:8000/v1/analyses -F "screenshot=@sample.png" -F "bug_report=The save button is clipped on mobile"
 ~~~
 
-The response includes a SHA-256 digest, dimensions, findings, evidence, confidence, recommended checks, a test plan, limitations, and a human-review flag. Screenshot-only analysis cannot establish DOM or runtime root causes by itself.
+The response includes a SHA-256 digest, dimensions, findings, evidence, confidence, recommended checks, a test plan, limitations, and a human-review flag. Screenshot-only analysis cannot establish DOM or runtime root causes by itself. The separate durable-run endpoints create a SQLite record and audit trail.
+
+## Durable debugging runs and human review
+
+- `POST /v1/debug-runs`: analyse a screenshot and persist a run in `human_review`.
+- `GET /v1/debug-runs`: list recent runs.
+- `GET /v1/debug-runs/{workflow_id}`: retrieve analysis and audit history.
+- `POST /v1/debug-runs/{workflow_id}/transitions`: record a legal state transition with actor and reason.
+- `POST /v1/debug-runs/{workflow_id}/browser-evidence`: optionally capture an allow-listed test page and attach minimised runtime evidence.
+
+The SQLite database defaults to `./data/debuglens.db`; override it with `DATABASE_PATH`. The Compose file mounts a writable volume at `/data`. Only screenshot digests and analysis results are retained by the run store, not uploaded screenshot bytes. The optional browser endpoint is disabled by default. Set `BROWSER_ENABLED=true` and an exact `BROWSER_ALLOWED_HOSTS` list only in an isolated test environment with network egress controls.
+
+**Security limitation:** the API does not yet implement authentication, authorisation, rate limiting or tenant isolation. Keep it local or behind a trusted development boundary. Do not expose it publicly or process confidential data.
 
 ## Compare models
 
@@ -174,4 +186,4 @@ The workflow module models legal transitions from RECEIVED through evidence coll
 6. Production operations: observability, rate limits, privacy controls, security review, and incident response.
 7. AWS: ECS/Fargate, S3, SQS, Step Functions approval callbacks, Secrets Manager, CloudWatch and Terraform after review.
 
-See docs/architecture.md, docs/agent-workflow.md, docs/browser-capture.md, docs/model-evaluation.md, docs/ai-assurance.md, docs/threat-model.md, docs/evaluation.md, docs/operations.md, and docs/roadmap.md. The AWS artifact-storage Terraform baseline is documented in infra/terraform/README.md.
+See docs/architecture.md, docs/agent-workflow.md, docs/browser-capture.md, docs/end-to-end-workflow.md, docs/model-evaluation.md, docs/ai-assurance.md, docs/threat-model.md, docs/evaluation.md, docs/operations.md, and docs/roadmap.md. The AWS artifact-storage Terraform baseline is documented in infra/terraform/README.md.
