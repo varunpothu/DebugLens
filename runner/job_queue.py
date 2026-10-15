@@ -115,6 +115,7 @@ def enqueue_job(payload: dict[str, Any], idempotency_key: str) -> dict[str, Any]
     if not idempotency_key.strip() or len(idempotency_key) > 128:
         raise ValueError("Idempotency key must contain 1 to 128 characters.")
     validated = validate_payload(payload)
+    idempotency_key = idempotency_key.strip()
     now = _timestamp()
     with _connect() as db:
         db.execute("BEGIN IMMEDIATE")
@@ -289,6 +290,21 @@ def finish_job(job_id: str, worker_id: str, *, exit_code: int, output: str) -> d
 def _stop_process(process: subprocess.Popen[bytes]) -> None:
     if process.poll() is not None:
         return
+    if os.name == "nt":
+        try:
+            process.send_signal(signal.CTRL_BREAK_EVENT)
+            process.wait(timeout=8)
+            return
+        except (OSError, subprocess.TimeoutExpired):
+            pass
+        process.terminate()
+        try:
+            process.wait(timeout=3)
+            return
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait(timeout=3)
+            return
     try:
         os.killpg(process.pid, signal.SIGINT)
         process.wait(timeout=8)
@@ -329,7 +345,8 @@ def _run_job(job: dict[str, Any], worker_id: str) -> dict[str, Any]:
                 stderr=subprocess.STDOUT,
                 shell=False,
                 close_fds=True,
-                start_new_session=True,
+                start_new_session=os.name == "posix",
+                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0,
             )
         except OSError as exc:
             return finish_job(job["job_id"], worker_id, exit_code=2, output=str(exc))
