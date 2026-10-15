@@ -79,7 +79,7 @@ async def correlation_id(request: Request, call_next: RequestResponseEndpoint) -
 async def require_api_token(request: Request, call_next: RequestResponseEndpoint) -> Response:
     """Protect API operations when a bearer token is configured."""
     public_paths = {"/health", "/ready", "/docs", "/openapi.json", "/redoc"}
-    if request.url.path not in public_paths and settings.api_access_token:
+    if request.method != "OPTIONS" and request.url.path not in public_paths and settings.api_access_token:
         supplied = request.headers.get("Authorization", "")
         expected = f"Bearer {settings.api_access_token}"
         if not hmac.compare_digest(supplied, expected):
