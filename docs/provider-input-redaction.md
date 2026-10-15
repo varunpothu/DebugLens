@@ -1,6 +1,6 @@
 # Provider input redaction
 
-DebugLens applies a deterministic text-pattern redaction pass to the issue/context text sent to a configured external vision provider.
+DebugLens applies a deterministic text-pattern redaction pass to the issue/context text sent to a configured external vision provider and source/report/findings text sent to the patch-suggestion provider.
 
 ## What is covered
 
@@ -9,13 +9,13 @@ The helper in `app/redaction.py` masks common patterns for:
 - Values attached to labels such as `password`, `secret`, `api_key`, `access_token`, and `authorization`.
 - Bearer tokens, common GitHub/GitLab tokens, AWS access-key IDs, JWT-shaped strings, private-key blocks, and payment-card-shaped digit sequences.
 
-The pass runs in `app/services/analyzer.py` immediately before the provider adapter is called. The locally returned analysis retains the user's original issue text; this feature is intended to reduce outbound disclosure, not to rewrite local records.
+The pass runs in `app/services/analyzer.py` immediately before vision analysis and recursively redacts string values in the JSON payload built by `app/patch_suggester.py` before patch-suggestion requests. The locally returned analysis retains the user's original issue text; this feature is intended to reduce outbound disclosure, not to rewrite local records.
 
 ## Important limitations
 
 - Pattern matching is not a data-loss-prevention guarantee. It can miss novel token formats, obfuscated values, identifiers in other countries, and secrets embedded in arbitrary encodings.
 - The screenshot bytes are sent to the selected vision provider unchanged. Text visible inside screenshots is **not** OCR-scanned or redacted by this feature.
-- Source code, browser DOM, logs, HAR files, and arbitrary nested data are not comprehensively scrubbed by this helper.
+- Source code and findings passed through the patch-suggestion JSON payload are pattern-scanned as text, but browser DOM, logs, HAR files, and arbitrary data outside those provider payloads are not comprehensively scrubbed by this helper.
 - A value may be masked even when it is not sensitive, especially long digit sequences.
 - Provider retention, training, residency, and contractual settings must be reviewed separately before real user data is sent.
 
