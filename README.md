@@ -88,6 +88,17 @@ Run the UI in a second terminal:
 streamlit run frontend/streamlit_app.py
 ~~~
 
+## Run the API with Docker Compose
+
+This starts the API only; the Streamlit dashboard can still be run locally in a separate Python environment. Docker Compose applies a read-only root filesystem, drops Linux capabilities, disables browser capture, and sets local CPU, memory, and process limits.
+
+~~~powershell
+Copy-Item .env.example .env
+docker compose up --build
+~~~
+
+Open http://127.0.0.1:8000/docs. Stop the stack with `Ctrl+C`, then run `docker compose down`. The SQLite database is stored in a named Docker volume. The `.dockerignore` file excludes local secrets, databases, screenshots, and development artefacts from the build context. Do not put real credentials in a committed file; keep `.env` local.
+
 ## Configure a vision model
 
 The default mode is mock and does not interpret pixels. Choose exactly one provider in .env and set its credential. Never commit .env or paste keys into issues.
