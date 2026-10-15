@@ -1,7 +1,6 @@
 """Analysis orchestration with explicit provider selection and a transparent mock mode."""
 from hashlib import sha256
 from io import BytesIO
-from typing import Any
 
 from PIL import Image, UnidentifiedImageError
 
