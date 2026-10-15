@@ -1,5 +1,6 @@
 """FastAPI entry point for DebugLens."""
 
+import hmac
 import json
 import logging
 from collections.abc import AsyncIterator
@@ -44,6 +45,8 @@ logger = logging.getLogger("debuglens")
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     logger.info("DebugLens starting; provider=%s", settings.analysis_provider)
+    if settings.app_env.lower() in {"prod", "production"} and not settings.api_access_token:
+        raise RuntimeError("API_ACCESS_TOKEN must be configured in production.")
     initialise_store()
     yield
     logger.info("DebugLens shutting down")
@@ -60,7 +63,7 @@ app.add_middleware(
     allow_origins=settings.cors_origins,
     allow_credentials=False,
     allow_methods=["GET", "POST"],
-    allow_headers=["Content-Type", "X-Correlation-ID"],
+    allow_headers=["Content-Type", "X-Correlation-ID", "Authorization"],
 )
 
 
@@ -70,6 +73,18 @@ async def correlation_id(request: Request, call_next: RequestResponseEndpoint) -
     response = await call_next(request)
     response.headers["X-Correlation-ID"] = request_id
     return response
+
+
+@app.middleware("http")
+async def require_api_token(request: Request, call_next: RequestResponseEndpoint) -> Response:
+    """Protect API operations when a bearer token is configured."""
+    public_paths = {"/health", "/ready", "/docs", "/openapi.json", "/redoc"}
+    if request.url.path not in public_paths and settings.api_access_token:
+        supplied = request.headers.get("Authorization", "")
+        expected = f"Bearer {settings.api_access_token}"
+        if not hmac.compare_digest(supplied, expected):
+            return JSONResponse(status_code=401, content={"detail": "Valid bearer token required."})
+    return await call_next(request)
 
 
 @app.exception_handler(HTTPException)
