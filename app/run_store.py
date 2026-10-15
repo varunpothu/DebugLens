@@ -183,6 +183,24 @@ def transition_run(
         record = _decode_row(row)
         events = record["events"]
         current = WorkflowState(record["state"])
+        if target in {WorkflowState.PATCH_PROPOSED, WorkflowState.TESTED}:
+            db.rollback()
+            raise ValueError("Use the dedicated patch proposal or test result endpoint for this transition.")
+        if target == WorkflowState.VERIFIED:
+            patch = db.execute(
+                "SELECT patch_sha256 FROM patch_proposals WHERE workflow_id = ? ORDER BY created_at DESC LIMIT 1",
+                (workflow_id,),
+            ).fetchone()
+            report = db.execute(
+                "SELECT patch_sha256, outcome FROM test_reports WHERE workflow_id = ? ORDER BY created_at DESC LIMIT 1",
+                (workflow_id,),
+            ).fetchone()
+            if current != WorkflowState.TESTED or patch is None or report is None:
+                db.rollback()
+                raise ValueError("Verification requires a proposed patch and a recorded test result.")
+            if report["outcome"] != "passed" or report["patch_sha256"] != patch["patch_sha256"]:
+                db.rollback()
+                raise ValueError("Verification requires a passing test result for the current patch digest.")
         workflow = DebugWorkflow(workflow_id=workflow_id, state=current)
         try:
             event = workflow.transition(target, actor=actor, reason=reason)
