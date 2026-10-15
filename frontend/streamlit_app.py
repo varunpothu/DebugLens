@@ -10,6 +10,8 @@ st.title("🔎 DebugLens")
 st.caption("Evidence-first UI debugging. Review every finding before acting on it.")
 
 api_url = st.sidebar.text_input("API base URL", "http://127.0.0.1:8000").rstrip("/")
+api_token = st.sidebar.text_input("API bearer token (optional)", type="password")
+API_HEADERS = {"Authorization": f"Bearer {api_token}"} if api_token else {}
 st.sidebar.info("Use synthetic or redacted screenshots. The API is for trusted local development only.")
 if st.sidebar.button("Check API health"):
     try:
@@ -36,13 +38,13 @@ LEGAL_NEXT_STATES = {
 
 
 def api_get(path: str, *, timeout: int = 15) -> dict:
-    response = requests.get(f"{api_url}{path}", timeout=timeout)
+    response = requests.get(f"{api_url}{path}", headers=API_HEADERS, timeout=timeout)
     response.raise_for_status()
     return response.json()
 
 
 def api_post(path: str, **kwargs) -> dict:
-    response = requests.post(f"{api_url}{path}", timeout=90, **kwargs)
+    response = requests.post(f"{api_url}{path}", headers=API_HEADERS, timeout=90, **kwargs)
     if not response.ok:
         try:
             detail = response.json().get("detail", response.text)
