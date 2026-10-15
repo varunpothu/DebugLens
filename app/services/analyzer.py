@@ -16,6 +16,10 @@ class InvalidImageError(ValueError):
     """Raised when uploaded bytes are not a valid supported image."""
 
 
+class ProviderConsentRequired(RuntimeError):
+    """External image transfer is disabled until an operator explicitly enables it."""
+
+
 def inspect_image(image_bytes: bytes) -> tuple[str, int, int, str]:
     """Decode an image safely and return its digest, dimensions, and normalised MIME type."""
     if not image_bytes:
@@ -92,6 +96,11 @@ def analyse_screenshot(
 ) -> AnalysisResponse:
     """Validate evidence, call the explicitly selected provider, and return a typed result."""
     digest, width, height, media_type = inspect_image(image_bytes)
+    if provider != "mock" and not get_settings().allow_unredacted_screenshots:
+        raise ProviderConsentRequired(
+            "External vision providers are disabled until ALLOW_UNREDACTED_SCREENSHOTS=true; "
+            "screenshot pixels are not currently redacted."
+        )
     if provider == "mock":
         findings = [
             Finding(
