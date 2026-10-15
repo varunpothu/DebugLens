@@ -127,6 +127,11 @@ def _copy_base(source: Path, destination: Path) -> tuple[int, int]:
     count = 0
     total = 0
     tracked = _tracked_paths(source)
+    tracked_directories = {
+        "/".join(PurePosixPath(item).parts[:index])
+        for item in tracked
+        for index in range(1, len(PurePosixPath(item).parts))
+    }
     if source.is_symlink():
         raise ProvisionError("Base workspace path must not be a symlink.")
     source = source.resolve(strict=True)
@@ -145,7 +150,7 @@ def _copy_base(source: Path, destination: Path) -> tuple[int, int]:
                     raise ProvisionError("Base workspace symlinks are not allowed.")
                 dirs.remove(dirname)
                 continue
-            if _is_excluded(rel) or not any(item.startswith(rel_name + "/") for item in tracked):
+            if _is_excluded(rel) or rel_name not in tracked_directories:
                 dirs.remove(dirname)
         for filename in files:
             original = root_path / filename
