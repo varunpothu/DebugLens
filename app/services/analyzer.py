@@ -5,7 +5,7 @@ from io import BytesIO
 from PIL import Image, UnidentifiedImageError
 
 from app.config import get_settings
-from app.providers.base import ImageInput, ProviderResult
+from app.providers.base import ImageInput, ProviderResult, VisionProvider
 from app.providers.native_vision import AnthropicVisionProvider, GeminiVisionProvider
 from app.providers.openai_compatible import OpenAICompatibleVisionProvider
 from app.schemas import AnalysisResponse, Evidence, Finding, Severity
@@ -53,6 +53,7 @@ def _run_vision_provider(
         width=width,
         height=height,
     )
+    adapter: VisionProvider
     if provider == "openai_compatible":
         if not settings.vision_api_key or not settings.vision_model:
             raise RuntimeError("Vision provider credentials or model configuration are missing.")
