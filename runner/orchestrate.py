@@ -46,8 +46,10 @@ def execute(
         raise ValueError("Orchestrator timeout must be between 30 and 360 seconds.")
 
     snapshot = workspace_digest(workspace)
+    container_name = f"debuglens-worker-{uuid4().hex}"
     command = [
         "docker", "run", "--rm",
+        "--name", container_name,
         "--network", "none",
         "--read-only",
         "--cap-drop", "ALL",
@@ -115,6 +117,29 @@ def execute(
         raw = exc.stdout or b""
         output_text = raw.decode("utf-8", errors="replace")[:MAX_OUTPUT]
         truncated = len(raw) > MAX_OUTPUT
+        # Killing the Docker CLI does not guarantee the daemon stopped the container.
+        # Explicitly remove the named worker and report uncertainty if cleanup fails.
+        try:
+            cleanup = subprocess.run(
+                ["docker", "rm", "-f", container_name],
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                timeout=10,
+                check=False,
+                shell=False,
+                close_fds=True,
+            )
+            cleanup_confirmed = cleanup.returncode == 0
+        except (OSError, subprocess.TimeoutExpired):
+            cleanup_confirmed = False
+        if not cleanup_confirmed:
+            cleanup_note = (
+                "\nContainer cleanup could not be confirmed; inspect the Docker host "
+                "for an orphaned DebugLens worker."
+            )
+            output_text = (output_text + cleanup_note)[:MAX_OUTPUT]
+            truncated = truncated or len(output_text) >= MAX_OUTPUT
     except OSError as exc:
         outcome = "failed"
         exit_code = None
