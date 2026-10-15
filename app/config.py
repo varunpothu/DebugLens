@@ -1,5 +1,4 @@
 """Typed configuration with safe local defaults."""
-
 from functools import lru_cache
 
 from pydantic import Field
@@ -13,6 +12,10 @@ class Settings(BaseSettings):
     analysis_provider: str = "mock"
     max_upload_bytes: int = Field(default=10 * 1024 * 1024, ge=1024, le=25 * 1024 * 1024)
     allowed_origins: str = "http://localhost:8501,http://127.0.0.1:8501"
+    vision_api_key: str = ""
+    vision_model: str = ""
+    vision_base_url: str = "https://api.openai.com/v1"
+    vision_timeout_seconds: float = Field(default=45.0, ge=1.0, le=120.0)
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
