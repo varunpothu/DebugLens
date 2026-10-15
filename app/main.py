@@ -2,12 +2,15 @@
 
 import json
 import logging
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from uuid import uuid4
 
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.middleware.base import RequestResponseEndpoint
+from starlette.responses import Response
 
 from app.config import get_settings
 from app.schemas import AnalysisResponse, ReadinessResponse
@@ -19,7 +22,7 @@ logger = logging.getLogger("debuglens")
 
 
 @asynccontextmanager
-async def lifespan(_: FastAPI):
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     logger.info("DebugLens starting; provider=%s", settings.analysis_provider)
     yield
     logger.info("DebugLens shutting down")
@@ -41,7 +44,7 @@ app.add_middleware(
 
 
 @app.middleware("http")
-async def correlation_id(request: Request, call_next):
+async def correlation_id(request: Request, call_next: RequestResponseEndpoint) -> Response:
     request_id = request.headers.get("X-Correlation-ID", str(uuid4()))[:100]
     response = await call_next(request)
     response.headers["X-Correlation-ID"] = request_id
@@ -49,7 +52,7 @@ async def correlation_id(request: Request, call_next):
 
 
 @app.exception_handler(HTTPException)
-async def http_exception_handler(request: Request, exc: HTTPException):
+async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
     return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
 
 
