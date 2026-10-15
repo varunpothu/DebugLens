@@ -52,6 +52,20 @@ def test_parse_suggestion_rejects_unrelated_file_diff() -> None:
         _parse_suggestion(json.dumps(payload), "app.css", "openai_compatible", "test-model")
 
 
+def test_parse_suggestion_rejects_multiple_file_and_binary_diffs() -> None:
+    payload = valid_payload()
+    payload["patch_diff"] += (
+        "\n--- a/secrets.txt\n+++ b/secrets.txt\n@@ -1 +1 @@\n-secret\n+leaked"
+    )
+    with pytest.raises(ValueError, match="exactly one"):
+        _parse_suggestion(json.dumps(payload), "app.css", "openai_compatible", "test-model")
+
+    payload = valid_payload()
+    payload["patch_diff"] += "\nGIT binary patch"
+    with pytest.raises(ValueError, match="text-only"):
+        _parse_suggestion(json.dumps(payload), "app.css", "openai_compatible", "test-model")
+
+
 def test_parse_suggestion_rejects_invalid_risk() -> None:
     payload = valid_payload()
     payload["risk"] = "certain"
