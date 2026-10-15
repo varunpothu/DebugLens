@@ -3,6 +3,7 @@
 import hmac
 import json
 import logging
+from hashlib import sha256
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from uuid import uuid4
@@ -18,6 +19,7 @@ from app.config import get_settings
 from app.schemas import (
     AnalysisResponse,
     BrowserCaptureRequest,
+    ExecutionResultRequest,
     PatchProposalRequest,
     PatchSuggestionRequest,
     ReadinessResponse,
@@ -31,6 +33,7 @@ from app.run_store import (
     get_run,
     initialise_store,
     list_runs,
+    record_execution_result,
     record_test_result,
     transition_run,
 )
@@ -367,6 +370,47 @@ def generate_patch_suggestion(workflow_id: str, request: PatchSuggestionRequest)
             risk=suggestion.risk,
             rollback_plan=suggestion.rollback_plan,
             actor=request.actor,
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Debugging run not found.") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+
+@app.post("/v1/debug-runs/{workflow_id}/execution-results")
+async def submit_execution_result(workflow_id: str, request: Request) -> dict:
+    """Accept a result signed by the trusted host orchestrator, never by the worker container."""
+    secret = settings.execution_signing_secret
+    if len(secret) < 32:
+        raise HTTPException(
+            status_code=503,
+            detail="Trusted execution result ingestion is not configured.",
+        )
+    raw_body = await request.body()
+    supplied_signature = request.headers.get("X-DebugLens-Signature", "")
+    expected_signature = hmac.new(secret.encode("utf-8"), raw_body, sha256).hexdigest()
+    if not hmac.compare_digest(supplied_signature, expected_signature):
+        raise HTTPException(status_code=401, detail="Valid execution result signature required.")
+    try:
+        payload = ExecutionResultRequest.model_validate_json(raw_body)
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail="Invalid execution result payload.") from exc
+    if payload.workflow_id != workflow_id:
+        raise HTTPException(status_code=422, detail="Workflow ID in payload does not match the URL.")
+    try:
+        return record_execution_result(
+            workflow_id,
+            patch_sha256=payload.patch_sha256,
+            suite=payload.suite,
+            outcome=payload.outcome,
+            exit_code=payload.exit_code,
+            timed_out=payload.timed_out,
+            duration_seconds=payload.duration_seconds,
+            workspace_sha256=payload.workspace_sha256,
+            output=payload.output,
+            output_truncated=payload.output_truncated,
+            actor=payload.actor,
         )
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="Debugging run not found.") from exc
