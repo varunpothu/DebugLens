@@ -46,7 +46,7 @@ def validate_target_file(target_file: str) -> str:
         or ":" in candidate
         or any(ord(char) < 32 or ord(char) == 127 for char in candidate)
         or not re.fullmatch(r"[A-Za-z0-9_./+-]+", candidate)
-        or any(part in {"", ".", ".."} for part in path.parts)
+        or any(part in {"", ".", ".."} for part in candidate.split("/"))
         or any(part.lower().startswith(".git") for part in path.parts)
     ):
         raise ValueError("Target file must be a safe repository-relative path.")
