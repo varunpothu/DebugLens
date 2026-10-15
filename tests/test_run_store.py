@@ -1,3 +1,5 @@
+from hashlib import sha256
+
 import pytest
 
 from app.config import get_settings
@@ -88,3 +90,78 @@ def test_browser_evidence_is_persisted_without_raw_screenshot() -> None:
 def test_missing_run_raises_key_error() -> None:
     with pytest.raises(KeyError):
         get_run("not-found")
+
+
+
+def test_patch_proposal_and_test_result_gate_verification() -> None:
+    run = create_run(bug_report="Button overflows", screenshot_sha256="a" * 64, analysis=sample_analysis())
+    run = transition_run(
+        run["workflow_id"],
+        target=WorkflowState.REPRODUCED,
+        actor="reviewer",
+        reason="Reproduced in the local fixture at 390x844.",
+    )
+    diff = "--- a/app.css\n+++ b/app.css\n@@\n-.button { width: 120%; }\n+.button { max-width: 100%; }\n"
+    run = create_patch_proposal(
+        run["workflow_id"],
+        patch_diff=diff,
+        rationale="Constrain the button to its parent container.",
+        risk="low",
+        rollback_plan="Revert the one-file CSS diff.",
+        actor="reviewer",
+    )
+    digest = sha256(diff.encode("utf-8")).hexdigest()
+    assert run["state"] == WorkflowState.PATCH_PROPOSED.value
+    assert run["patch_proposal"]["patch_sha256"] == digest
+
+    with pytest.raises(ValueError, match="current patch SHA-256"):
+        record_test_result(
+            run["workflow_id"],
+            patch_sha256="0" * 64,
+            outcome="passed",
+            command="pytest -q",
+            summary="All tests passed",
+            actor="reviewer",
+        )
+
+    run = record_test_result(
+        run["workflow_id"],
+        patch_sha256=digest,
+        outcome="passed",
+        command="pytest -q",
+        summary="Ran locally; regression test passed.",
+        actor="reviewer",
+    )
+    assert run["state"] == WorkflowState.TESTED.value
+    run = transition_run(
+        run["workflow_id"],
+        target=WorkflowState.VERIFIED,
+        actor="reviewer",
+        reason="Reviewed the diff and test output; accepted for this test fixture.",
+    )
+    assert run["state"] == WorkflowState.VERIFIED.value
+    assert run["test_reports"][0]["outcome"] == "passed"
+
+
+def test_cannot_propose_patch_before_reproduction() -> None:
+    run = create_run(bug_report="Issue", screenshot_sha256="a" * 64, analysis=sample_analysis())
+    with pytest.raises(ValueError, match="only allowed after"):
+        create_patch_proposal(
+            run["workflow_id"],
+            patch_diff="diff --git a/a b/a",
+            rationale="Test",
+            risk="low",
+            rollback_plan="Revert",
+            actor="reviewer",
+        )
+
+
+def test_cannot_mark_verified_without_patch_and_passing_test() -> None:
+    run = create_run(bug_report="Issue", screenshot_sha256="a" * 64, analysis=sample_analysis())
+    with pytest.raises(ValueError, match="Illegal workflow transition"):
+        transition_run(
+            run["workflow_id"],
+            target=WorkflowState.VERIFIED,
+            actor="reviewer",
+            reason="Skip required checks",
+        )
