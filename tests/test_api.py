@@ -216,3 +216,32 @@ def test_configured_bearer_token_protects_api_routes(monkeypatch) -> None:
     assert allowed.status_code == 200
     health = client.get("/health")
     assert health.status_code == 200
+
+
+
+def test_patch_suggestion_requires_configured_provider() -> None:
+    created = client.post(
+        "/v1/debug-runs",
+        files={"screenshot": ("screen.png", png_bytes(), "image/png")},
+        data={"bug_report": "Button overflows"},
+    )
+    workflow_id = created.json()["workflow_id"]
+    reproduced = client.post(
+        f"/v1/debug-runs/{workflow_id}/transitions",
+        json={
+            "target": "reproduced",
+            "actor": "reviewer",
+            "reason": "Reproduced on a local fixture.",
+        },
+    )
+    assert reproduced.status_code == 200
+    response = client.post(
+        f"/v1/debug-runs/{workflow_id}/patch-suggestions",
+        json={
+            "target_file": "app.css",
+            "source_context": ".button { width: 118%; }",
+            "actor": "reviewer",
+        },
+    )
+    assert response.status_code == 503
+    assert response.json()["detail"] == "Patch suggestion failed or the configured provider is unavailable."
