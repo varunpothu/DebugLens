@@ -139,9 +139,21 @@ def get_run(workflow_id: str) -> dict[str, Any]:
     initialise_store()
     with _connect() as db:
         row = db.execute("SELECT * FROM debug_runs WHERE workflow_id = ?", (workflow_id,)).fetchone()
+        proposal = db.execute(
+            "SELECT * FROM patch_proposals WHERE workflow_id = ? ORDER BY created_at DESC LIMIT 1",
+            (workflow_id,),
+        ).fetchone()
+        reports = db.execute(
+            "SELECT report_id, patch_sha256, outcome, command, summary, actor, created_at "
+            "FROM test_reports WHERE workflow_id = ? ORDER BY created_at DESC",
+            (workflow_id,),
+        ).fetchall()
     if row is None:
         raise KeyError(workflow_id)
-    return _decode_row(row)
+    result = _decode_row(row)
+    result["patch_proposal"] = dict(proposal) if proposal is not None else None
+    result["test_reports"] = [dict(report) for report in reports]
+    return result
 
 
 def list_runs(limit: int = 20) -> list[dict[str, Any]]:
