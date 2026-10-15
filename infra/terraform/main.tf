@@ -104,10 +104,10 @@ data "aws_caller_identity" "current" {}
 
 locals {
   ecs_task_assume_role = {
-    Version = "2012-10-17"
+    Version   = "2012-10-17"
     Statement = [{
-      Effect = "Allow"
-      Action = "sts:AssumeRole"
+      Effect    = "Allow"
+      Action    = "sts:AssumeRole"
       Principal = { Service = "ecs-tasks.amazonaws.com" }
       Condition = {
         StringEquals = {
@@ -122,7 +122,7 @@ locals {
 
   s3_kms_conditions = {
     StringEquals = {
-      "kms:ViaService" = "s3.${var.aws_region}.amazonaws.com"
+      "kms:ViaService"                    = "s3.${var.aws_region}.amazonaws.com"
       "kms:EncryptionContext:aws:s3:arn" = aws_s3_bucket.artifacts.arn
     }
   }
@@ -136,10 +136,10 @@ resource "aws_iam_role" "api" {
 }
 
 resource "aws_iam_role_policy" "api_artifacts" {
-  name = "debuglens-api-artifacts"
-  role = aws_iam_role.api.id
+  name   = "debuglens-api-artifacts"
+  role   = aws_iam_role.api.id
   policy = jsonencode({
-    Version = "2012-10-17"
+    Version   = "2012-10-17"
     Statement = [
       {
         Sid      = "ApiArtifactObjects"
@@ -148,10 +148,10 @@ resource "aws_iam_role_policy" "api_artifacts" {
         Resource = ["${aws_s3_bucket.artifacts.arn}/api/*"]
       },
       {
-        Sid      = "ApiArtifactEncryption"
-        Effect   = "Allow"
-        Action   = ["kms:Encrypt", "kms:Decrypt", "kms:GenerateDataKey"]
-        Resource = [aws_kms_key.artifacts.arn]
+        Sid       = "ApiArtifactEncryption"
+        Effect    = "Allow"
+        Action    = ["kms:Encrypt", "kms:Decrypt", "kms:GenerateDataKey"]
+        Resource  = [aws_kms_key.artifacts.arn]
         Condition = local.s3_kms_conditions
       }
     ]
@@ -166,10 +166,10 @@ resource "aws_iam_role" "worker" {
 }
 
 resource "aws_iam_role_policy" "worker_artifacts" {
-  name = "debuglens-worker-artifacts"
-  role = aws_iam_role.worker.id
+  name   = "debuglens-worker-artifacts"
+  role   = aws_iam_role.worker.id
   policy = jsonencode({
-    Version = "2012-10-17"
+    Version   = "2012-10-17"
     Statement = [
       {
         Sid      = "WorkerReadInputs"
@@ -184,10 +184,10 @@ resource "aws_iam_role_policy" "worker_artifacts" {
         Resource = ["${aws_s3_bucket.artifacts.arn}/worker-results/*"]
       },
       {
-        Sid      = "WorkerArtifactEncryption"
-        Effect   = "Allow"
-        Action   = ["kms:Encrypt", "kms:Decrypt", "kms:GenerateDataKey"]
-        Resource = [aws_kms_key.artifacts.arn]
+        Sid       = "WorkerArtifactEncryption"
+        Effect    = "Allow"
+        Action    = ["kms:Encrypt", "kms:Decrypt", "kms:GenerateDataKey"]
+        Resource  = [aws_kms_key.artifacts.arn]
         Condition = local.s3_kms_conditions
       }
     ]
