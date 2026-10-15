@@ -14,8 +14,24 @@ from starlette.responses import Response
 
 from app.agents import build_investigation_pipeline
 from app.config import get_settings
-from app.schemas import AnalysisResponse, BrowserCaptureRequest, ReadinessResponse, TransitionRequest
-from app.run_store import attach_browser_evidence, create_run, get_run, initialise_store, list_runs, transition_run
+from app.schemas import (
+    AnalysisResponse,
+    BrowserCaptureRequest,
+    PatchProposalRequest,
+    ReadinessResponse,
+    TestResultRequest,
+    TransitionRequest,
+)
+from app.run_store import (
+    attach_browser_evidence,
+    create_patch_proposal,
+    create_run,
+    get_run,
+    initialise_store,
+    list_runs,
+    record_test_result,
+    transition_run,
+)
 from app.workflow import WorkflowState
 from app.browser.capture import UnsafeTargetError, capture_page
 from app.services.analyzer import InvalidImageError, analyse_screenshot
@@ -266,3 +282,40 @@ async def collect_browser_evidence(
         raise HTTPException(status_code=404, detail="Debugging run not found.") from exc
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+
+@app.post("/v1/debug-runs/{workflow_id}/patch-proposals")
+def propose_patch(workflow_id: str, request: PatchProposalRequest) -> dict:
+    """Store a human-authored patch diff; never applies or executes it."""
+    try:
+        return create_patch_proposal(
+            workflow_id,
+            patch_diff=request.patch_diff,
+            rationale=request.rationale,
+            risk=request.risk,
+            rollback_plan=request.rollback_plan,
+            actor=request.actor,
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Debugging run not found.") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@app.post("/v1/debug-runs/{workflow_id}/test-results")
+def submit_test_result(workflow_id: str, request: TestResultRequest) -> dict:
+    """Record a manually executed test result tied to the exact patch digest."""
+    try:
+        return record_test_result(
+            workflow_id,
+            patch_sha256=request.patch_sha256,
+            outcome=request.outcome,
+            command=request.command,
+            summary=request.summary,
+            actor=request.actor,
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Debugging run not found.") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
