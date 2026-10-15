@@ -5,6 +5,8 @@
 - [x] Typed response contract and deterministic mock mode
 - [x] FastAPI health/readiness and upload endpoint
 - [x] Image decoding, MIME allow-list, upload size and pixel bounds
+- [x] SQLite run persistence and audit trail for local workflows
+- [x] API endpoints for creating runs, listing runs, reading a run, and recording legal transitions
 - [x] Unit, API, workflow, model-evaluation, provider-contract, and target-validation tests
 - [x] Threat model, architecture, evaluation criteria, and operations guidance
 - [x] CI pipeline for Python 3.11/3.12, Ruff, pytest, and mypy
@@ -26,13 +28,14 @@
 - [x] Initial Playwright capture library
 - [x] Exact hostname allow-list and URL validation tests
 - [x] Capture screenshot, page title, tag counts, console error types, and failed-request counts
-- [ ] Integrate the collector with the API through an asynchronous job interface
+- [x] Optional API integration that attaches minimised browser evidence to a durable run
 - [ ] Run in a disposable container with network egress controls and DNS/SSRF protection
 - [ ] Add resource quotas, cancellation, job timeouts, artifact expiry, and reproduction metadata
 
 ## Phase 3: Agentic workflow
 
 - [x] Explicit workflow state machine and audit events
+- [x] Human review dashboard for run history and legal transitions
 - [x] Documented specialist-agent responsibilities and approval gates
 - [ ] Implement bounded perception, evidence correlation, diagnosis, test planning, and verification tasks
 - [ ] Add durable orchestration, idempotency, retries, timeout handling, cancellation, and dead-letter queue
@@ -55,6 +58,6 @@
 - [ ] SLOs, dashboards, alerts, quotas, provider budgets, and cost attribution
 - [ ] ECS/Fargate, SQS, Step Functions approval callbacks, Secrets Manager, and CloudWatch alarms
 - [ ] GitHub OIDC deployment roles, staging environment, rollback, and disaster recovery
-- [ ] Security review, release checklist, privacy review, and incident playbooks
+- [ ] Authentication, authorisation, rate limits, tenant isolation, and a production security review
 
 The checked items are implemented in this repository. Unchecked items are planned and must not be represented as production-ready capabilities.
