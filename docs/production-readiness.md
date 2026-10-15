@@ -10,7 +10,7 @@
 - A dry-run-first CLI can delete old terminal workflows and related local SQLite records, with an aggregate retention audit event. It does not delete S3 objects, backups, logs, provider-side copies, or containers.
 - Common sensitive text patterns are redacted before outbound vision-provider calls.
 - External vision-provider image transfer is denied by default because screenshot pixels are not redacted; the operator must explicitly set `ALLOW_UNREDACTED_SCREENSHOTS=true` to opt in. This is not a substitute for OCR redaction or privacy review.
-- Browser capture is disabled by default and requires an exact hostname allow-list.
+- Browser capture is disabled by default, requires an exact hostname allow-list, and is blocked outside local/development/test until an isolated browser worker is deployed.
 - Proposed patches remain review-only; test reports are bound to patch/workspace digests.
 - The isolated test worker uses a non-root user, read-only workspace, no network, dropped capabilities, no-new-privileges, and CPU/memory/PID/time/output bounds.
 - CI runs Ruff, pytest, mypy on Python 3.11 and 3.12 and exercises the worker container.
