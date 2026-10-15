@@ -1,3 +1,4 @@
+from hashlib import sha256
 from io import BytesIO
 
 from fastapi.testclient import TestClient
@@ -117,3 +118,90 @@ def test_debug_run_rejects_invalid_context() -> None:
         data={"context_json": "not-json"},
     )
     assert response.status_code == 400
+
+
+
+def test_patch_proposal_and_test_result_api_enforce_digest_gate() -> None:
+    created = client.post(
+        "/v1/debug-runs",
+        files={"screenshot": ("screen.png", png_bytes(), "image/png")},
+        data={"bug_report": "Button overflows its container"},
+    )
+    workflow_id = created.json()["workflow_id"]
+    reproduced = client.post(
+        f"/v1/debug-runs/{workflow_id}/transitions",
+        json={
+            "target": "reproduced",
+            "actor": "reviewer",
+            "reason": "Reproduced at a 390x844 viewport.",
+        },
+    )
+    assert reproduced.status_code == 200
+
+    patch_diff = "diff --git a/app.css b/app.css\n-old\n+fixed"
+    proposal = client.post(
+        f"/v1/debug-runs/{workflow_id}/patch-proposals",
+        json={
+            "patch_diff": patch_diff,
+            "rationale": "Constrain the button to its parent container.",
+            "risk": "low",
+            "rollback_plan": "Revert the CSS change.",
+            "actor": "reviewer",
+        },
+    )
+    assert proposal.status_code == 200
+    digest = sha256(patch_diff.encode("utf-8")).hexdigest()
+    assert proposal.json()["patch_proposal"]["patch_sha256"] == digest
+
+    wrong_digest = client.post(
+        f"/v1/debug-runs/{workflow_id}/test-results",
+        json={
+            "patch_sha256": "0" * 64,
+            "outcome": "passed",
+            "command": "pytest -q",
+            "summary": "All tests passed.",
+            "actor": "reviewer",
+        },
+    )
+    assert wrong_digest.status_code == 409
+
+    passed = client.post(
+        f"/v1/debug-runs/{workflow_id}/test-results",
+        json={
+            "patch_sha256": digest,
+            "outcome": "passed",
+            "command": "pytest -q",
+            "summary": "Regression test passed in the local fixture.",
+            "actor": "reviewer",
+        },
+    )
+    assert passed.status_code == 200
+    assert passed.json()["state"] == "tested"
+
+    verified = client.post(
+        f"/v1/debug-runs/{workflow_id}/transitions",
+        json={
+            "target": "verified",
+            "actor": "reviewer",
+            "reason": "Reviewed the exact diff and test output.",
+        },
+    )
+    assert verified.status_code == 200
+    assert verified.json()["state"] == "verified"
+
+
+def test_browser_evidence_endpoint_is_disabled_by_default() -> None:
+    created = client.post(
+        "/v1/debug-runs",
+        files={"screenshot": ("screen.png", png_bytes(), "image/png")},
+    )
+    response = client.post(
+        f"/v1/debug-runs/{created.json()['workflow_id']}/browser-evidence",
+        json={
+            "target_url": "https://example.org/",
+            "actor": "reviewer",
+            "viewport_width": 1440,
+            "viewport_height": 900,
+        },
+    )
+    assert response.status_code == 404
