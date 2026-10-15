@@ -33,6 +33,7 @@ def prepare(tmp_path: Path) -> tuple[Path, Path]:
     (base / "app.css").write_text(".button { width: 118%; }\n", encoding="utf-8")
     (base / ".env").write_text("SECRET=never-copy\n", encoding="utf-8")
     (base / ".env.example").write_text("EXAMPLE=value\n", encoding="utf-8")
+    (base / ".gitignore").write_text("local-secret.txt\n", encoding="utf-8")
     patch = tmp_path / "reviewed.patch"
     patch.write_text(PATCH, encoding="utf-8")
     if shutil.which("git"):
@@ -41,6 +42,7 @@ def prepare(tmp_path: Path) -> tuple[Path, Path]:
         subprocess.run(["git", "-C", str(base), "config", "user.name", "DebugLens Tests"], check=True)
         subprocess.run(["git", "-C", str(base), "add", "-A"], check=True)
         subprocess.run(["git", "-C", str(base), "commit", "-qm", "test base snapshot"], check=True)
+        (base / "local-secret.txt").write_text("ignored secret", encoding="utf-8")
     return base, patch
 
 
@@ -80,6 +82,8 @@ def test_provision_creates_exact_patched_copy_without_mutating_base(tmp_path: Pa
     assert (output / "app.css").read_text(encoding="utf-8") == ".button { max-width: 100%; }\n"
     assert not (output / ".env").exists()
     assert (output / ".env.example").exists()
+    if shutil.which("git"):
+        assert not (output / "local-secret.txt").exists()
     assert manifest["patch_sha256"] == sha256(patch.read_bytes()).hexdigest()
     assert manifest["workspace_sha256"] == workspace_digest(output)
     assert manifest["base_revision"] == revision(base)
