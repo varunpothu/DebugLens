@@ -6,6 +6,7 @@ from PIL import Image, UnidentifiedImageError
 
 from app.config import get_settings
 from app.providers.base import ImageInput
+from app.providers.native_vision import AnthropicVisionProvider, GeminiVisionProvider
 from app.providers.openai_compatible import OpenAICompatibleVisionProvider
 from app.schemas import AnalysisResponse, Evidence, Finding, Severity
 
@@ -30,8 +31,50 @@ def inspect_image(image_bytes: bytes) -> tuple[str, int, int, str]:
                 raise InvalidImageError("Image dimensions are invalid or exceed the pixel limit.")
     except (UnidentifiedImageError, OSError) as exc:
         raise InvalidImageError("The upload is not a valid image.") from exc
+    assert image_format is not None
     media_type = {"PNG": "image/png", "JPEG": "image/jpeg", "WEBP": "image/webp"}[image_format]
     return sha256(image_bytes).hexdigest(), width, height, media_type
+
+
+def _run_vision_provider(
+    provider: str,
+    image_bytes: bytes,
+    digest: str,
+    width: int,
+    height: int,
+    media_type: str,
+    bug_report: str | None,
+):
+    settings = get_settings()
+    image = ImageInput(
+        content=image_bytes,
+        media_type=media_type,
+        sha256=digest,
+        width=width,
+        height=height,
+    )
+    if provider == "openai_compatible":
+        adapter = OpenAICompatibleVisionProvider(
+            api_key=settings.vision_api_key,
+            model=settings.vision_model,
+            base_url=settings.vision_base_url,
+            timeout_seconds=settings.vision_timeout_seconds,
+        )
+    elif provider == "anthropic":
+        adapter = AnthropicVisionProvider(
+            api_key=settings.anthropic_api_key,
+            model=settings.anthropic_model,
+            timeout_seconds=settings.vision_timeout_seconds,
+        )
+    elif provider == "gemini":
+        adapter = GeminiVisionProvider(
+            api_key=settings.gemini_api_key,
+            model=settings.gemini_model,
+            timeout_seconds=settings.vision_timeout_seconds,
+        )
+    else:
+        raise RuntimeError(f"Provider '{provider}' is not supported.")
+    return adapter.analyse(image, bug_report)
 
 
 def analyse_screenshot(
@@ -69,30 +112,12 @@ def analyse_screenshot(
             )
         ]
         provider_version = "baseline-1"
-    elif provider == "openai_compatible":
-        settings = get_settings()
-        if not settings.vision_api_key or not settings.vision_model:
-            raise RuntimeError("Vision provider credentials or model configuration are missing.")
-        adapter = OpenAICompatibleVisionProvider(
-            api_key=settings.vision_api_key,
-            model=settings.vision_model,
-            base_url=settings.vision_base_url,
-            timeout_seconds=settings.vision_timeout_seconds,
-        )
-        result = adapter.analyse(
-            ImageInput(
-                content=image_bytes,
-                media_type=media_type,
-                sha256=digest,
-                width=width,
-                height=height,
-            ),
-            bug_report,
+    else:
+        result = _run_vision_provider(
+            provider, image_bytes, digest, width, height, media_type, bug_report
         )
         findings = result.findings
         provider_version = result.model
-    else:
-        raise RuntimeError(f"Provider '{provider}' is not supported.")
 
     plan = [
         "Confirm the expected behaviour and exact reproduction steps.",
