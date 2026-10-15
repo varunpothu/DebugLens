@@ -16,6 +16,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 from urllib.parse import quote, urlparse
+from uuid import uuid4
 
 from runner.worker import workspace_digest
 
@@ -175,6 +176,7 @@ def signed_payload(
         raise ValueError("patch_sha256 must be a lowercase SHA-256 hex digest.")
     payload = {
         "workflow_id": workflow_id,
+        "execution_id": str(uuid4()),
         "patch_sha256": patch_sha256,
         "suite": suite,
         "outcome": result["outcome"],
