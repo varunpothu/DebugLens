@@ -104,7 +104,7 @@ data "aws_caller_identity" "current" {}
 
 locals {
   ecs_task_assume_role = {
-    Version   = "2012-10-17"
+    Version = "2012-10-17"
     Statement = [{
       Effect    = "Allow"
       Action    = "sts:AssumeRole"
@@ -136,10 +136,10 @@ resource "aws_iam_role" "api" {
 }
 
 resource "aws_iam_role_policy" "api_artifacts" {
-  name   = "debuglens-api-artifacts"
-  role   = aws_iam_role.api.id
+  name = "debuglens-api-artifacts"
+  role = aws_iam_role.api.id
   policy = jsonencode({
-    Version   = "2012-10-17"
+    Version = "2012-10-17"
     Statement = [
       {
         Sid      = "ApiArtifactObjects"
@@ -166,10 +166,10 @@ resource "aws_iam_role" "worker" {
 }
 
 resource "aws_iam_role_policy" "worker_artifacts" {
-  name   = "debuglens-worker-artifacts"
-  role   = aws_iam_role.worker.id
+  name = "debuglens-worker-artifacts"
+  role = aws_iam_role.worker.id
   policy = jsonencode({
-    Version   = "2012-10-17"
+    Version = "2012-10-17"
     Statement = [
       {
         Sid      = "WorkerReadInputs"
