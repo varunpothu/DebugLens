@@ -13,9 +13,10 @@ from starlette.middleware.base import RequestResponseEndpoint
 from starlette.responses import Response
 
 from app.config import get_settings
-from app.schemas import AnalysisResponse, ReadinessResponse, TransitionRequest
-from app.run_store import create_run, get_run, initialise_store, list_runs, transition_run
+from app.schemas import AnalysisResponse, BrowserCaptureRequest, ReadinessResponse, TransitionRequest
+from app.run_store import attach_browser_evidence, create_run, get_run, initialise_store, list_runs, transition_run
 from app.workflow import WorkflowState
+from app.browser.capture import UnsafeTargetError, capture_page
 from app.services.analyzer import InvalidImageError, analyse_screenshot
 
 settings = get_settings()
@@ -188,3 +189,71 @@ def transition_debug_run(workflow_id: str, request: TransitionRequest) -> dict:
         raise HTTPException(status_code=404, detail="Debugging run not found.") from exc
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+
+@app.post("/v1/debug-runs/{workflow_id}/browser-evidence")
+async def collect_browser_evidence(
+    workflow_id: str,
+    request: BrowserCaptureRequest,
+) -> dict:
+    """Capture an allow-listed page in a disposable environment and attach minimised evidence."""
+    if not settings.browser_enabled:
+        raise HTTPException(
+            status_code=404,
+            detail="Browser capture is disabled. Enable it only for an approved, isolated environment.",
+        )
+    if not settings.allowed_browser_hosts:
+        raise HTTPException(status_code=503, detail="No browser target allow-list is configured.")
+    try:
+        run = get_run(workflow_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Debugging run not found.") from exc
+    try:
+        capture = await capture_page(
+            request.target_url,
+            allowed_hosts=settings.allowed_browser_hosts,
+            viewport=(request.viewport_width, request.viewport_height),
+        )
+    except UnsafeTargetError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        logger.warning("Browser capture could not start")
+        raise HTTPException(status_code=503, detail="Browser capture is unavailable.") from exc
+    except Exception as exc:
+        logger.exception("Browser capture failed")
+        raise HTTPException(status_code=502, detail="Browser capture failed.") from exc
+
+    try:
+        screenshot_analysis = analyse_screenshot(
+            capture.screenshot_png,
+            run.get("bug_report"),
+            settings.analysis_provider,
+        )
+    except InvalidImageError as exc:
+        raise HTTPException(status_code=502, detail="Browser returned an invalid screenshot.") from exc
+    except RuntimeError as exc:
+        logger.warning("Browser screenshot analysis provider unavailable")
+        raise HTTPException(status_code=503, detail="Configured analysis provider is unavailable.") from exc
+
+    evidence = {
+        "final_url": capture.final_url,
+        "page_title": capture.page_title,
+        "viewport_width": capture.viewport_width,
+        "viewport_height": capture.viewport_height,
+        "dom_tag_counts": capture.dom_tag_counts,
+        "console_error_types": capture.console_errors,
+        "page_error_types": capture.page_errors,
+        "failed_request_count": capture.failed_request_count,
+        "screenshot_sha256": screenshot_analysis.screenshot_sha256,
+        "screenshot_analysis": screenshot_analysis.model_dump(mode="json"),
+        "raw_screenshot_retained": False,
+    }
+    try:
+        return attach_browser_evidence(workflow_id, actor=request.actor, evidence=evidence)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Debugging run not found.") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
