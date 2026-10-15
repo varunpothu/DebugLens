@@ -76,7 +76,13 @@ def test_transient_worker_failure_is_retried_once_then_failed(queue_db: None) ->
     assert second is not None
     failed = job_queue.finish_job(queued["job_id"], "worker-b", exit_code=2, output="again")
     assert failed["status"] == "failed"
+    assert failed["dead_letter"] is True
     assert failed["attempts"] == 2
+    assert job_queue.list_dead_letters()[0]["job_id"] == queued["job_id"]
+    replayed = job_queue.replay_dead_letter(queued["job_id"])
+    assert replayed["status"] == "queued"
+    assert replayed["dead_letter"] is False
+    assert replayed["attempts"] == 0
 
 
 def test_payload_rejects_unapproved_suite_and_extra_fields(queue_db: None) -> None:
