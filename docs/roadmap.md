@@ -44,7 +44,7 @@
 - [x] Add a host-side Docker orchestrator and HMAC-signed execution-result API
 - [x] Persist execution suite, exit code, workspace digest, duration, and bounded logs
 - [x] Provision a reviewed single-file text patch into a disposable copy with base/patch/workspace digests and manifest verification
-- [ ] Verify the supplied base revision against a trusted Git commit and clean working tree
+- [x] Verify the supplied full base commit SHA against Git HEAD and reject dirty/untracked working trees
 - [ ] Add queueing, cancellation, concurrency limits, and container cleanup monitoring
 - [x] Implement bounded provider-backed patch suggestion from user-supplied source context without automatic application
 - [ ] Add bounded LLM specialist agents for diagnosis and test planning
