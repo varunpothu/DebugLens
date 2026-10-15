@@ -68,10 +68,14 @@ def initialise_queue() -> None:
                 worker_id TEXT,
                 lease_until TEXT,
                 cancel_requested INTEGER NOT NULL DEFAULT 0,
+                dead_letter INTEGER NOT NULL DEFAULT 0,
                 exit_code INTEGER,
                 output TEXT NOT NULL DEFAULT ''
             )"""
         )
+        columns = {row["name"] for row in db.execute("PRAGMA table_info(execution_jobs)").fetchall()}
+        if "dead_letter" not in columns:
+            db.execute("ALTER TABLE execution_jobs ADD COLUMN dead_letter INTEGER NOT NULL DEFAULT 0")
         db.execute("CREATE INDEX IF NOT EXISTS idx_execution_jobs_claim ON execution_jobs(status, created_at)")
 
 
@@ -88,6 +92,7 @@ def _decode(row: sqlite3.Row) -> dict[str, Any]:
         "worker_id": row["worker_id"],
         "lease_until": row["lease_until"],
         "cancel_requested": bool(row["cancel_requested"]),
+        "dead_letter": bool(row["dead_letter"]),
         "exit_code": row["exit_code"],
         "output": row["output"],
     }
