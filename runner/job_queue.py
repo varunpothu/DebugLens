@@ -165,6 +165,42 @@ def list_jobs(limit: int = 20) -> list[dict[str, Any]]:
     return [_decode(row) for row in rows]
 
 
+def list_dead_letters(limit: int = 20) -> list[dict[str, Any]]:
+    initialise_queue()
+    if not 1 <= limit <= 100:
+        raise ValueError("limit must be between 1 and 100.")
+    with _connect() as db:
+        rows = db.execute(
+            "SELECT * FROM execution_jobs WHERE dead_letter=1 ORDER BY updated_at DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+    return [_decode(row) for row in rows]
+
+
+def replay_dead_letter(job_id: str) -> dict[str, Any]:
+    """Explicitly requeue a dead-lettered infrastructure failure for operator replay."""
+    initialise_queue()
+    now = _timestamp()
+    with _connect() as db:
+        db.execute("BEGIN IMMEDIATE")
+        row = db.execute(
+            "SELECT status,dead_letter FROM execution_jobs WHERE job_id=?", (job_id,)
+        ).fetchone()
+        if row is None:
+            db.rollback()
+            raise KeyError(job_id)
+        if row["status"] != "failed" or not row["dead_letter"]:
+            db.rollback()
+            raise ValueError("Only dead-lettered infrastructure failures can be replayed.")
+        db.execute(
+            """UPDATE execution_jobs SET status='queued',attempts=0,worker_id=NULL,lease_until=NULL,
+               cancel_requested=0,dead_letter=0,exit_code=NULL,output='',updated_at=? WHERE job_id=?""",
+            (now, job_id),
+        )
+        db.commit()
+    return get_job(job_id)
+
+
 def request_cancel(job_id: str) -> dict[str, Any]:
     initialise_queue()
     now = _timestamp()
