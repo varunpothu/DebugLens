@@ -1,17 +1,22 @@
-# Security Policy
+# Security policy
 
-## Supported versions
+## Supported scope
 
-Only the latest version on the default branch is currently supported while the project is in its initial development phase.
+Only the latest commit on the default branch is supported while DebugLens remains an early-stage engineering prototype. It is intended for local development and synthetic or redacted screenshots, not public production use.
 
 ## Reporting a vulnerability
 
-Please do not publish exploitable details in a public issue. Contact the repository owner privately through GitHub's security reporting mechanism if enabled, or request a private disclosure channel. Include the affected component, reproduction steps, impact, and a suggested mitigation where possible.
+Please do not open a public issue containing exploit details, credentials, private screenshots, customer data, or internal URLs. Contact the repository owner privately through GitHub's security reporting feature if enabled for this repository. If private reporting is unavailable, request a private contact route without including the vulnerability details.
 
-## Data handling
+Include the affected version/commit, a concise impact description, reproducible steps using synthetic data, and any suggested mitigation. Do not access, alter, or exfiltrate other people's data while validating a finding.
 
-Do not submit real customer screenshots, credentials, access tokens, production HAR files, or sensitive personal data in issues or pull requests. Use synthetic fixtures or redacted examples.
+## Current security limitations
 
-## Scope
+- The API supports a configurable shared bearer token, but not user identity, role-based authorisation, or tenant isolation.
+- The API has no built-in rate limiting or abuse detection.
+- Browser capture is disabled by default. Exact hostname validation must be combined with worker/container network egress controls to defend against SSRF and DNS rebinding.
+- Vision providers receive uploaded screenshots when configured. Automatic PII redaction is not implemented.
+- Patch proposals are stored, not applied. Test outcomes are reviewer-reported, not executed or independently verified by DebugLens.
+- The included Terraform provisions a private artifact bucket only. It is not a complete production deployment.
 
-Security-sensitive areas include image parsing, upload limits, model-provider integration, prompt injection, browser navigation, generated patches, dependency supply chain, CI credentials, and future cloud IAM policies.
+Do not expose the service to the public internet or send confidential screenshots to an external provider until these limitations have been addressed and reviewed.
