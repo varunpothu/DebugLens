@@ -10,6 +10,7 @@ import json
 import os
 import subprocess
 import sys
+import tempfile
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -73,13 +74,13 @@ def run_suite(suite: str, timeout_seconds: int = 120) -> dict[str, object]:
     outcome = "failed"
     exit_code: int | None = None
     timed_out = False
-    with open(os.devnull, "wb") as devnull:
+    with tempfile.TemporaryFile(mode="w+b", dir="/tmp") as output_file:
         try:
             completed = subprocess.run(
                 command,
                 cwd=WORKSPACE,
                 stdin=subprocess.DEVNULL,
-                stdout=subprocess.PIPE,
+                stdout=output_file,
                 stderr=subprocess.STDOUT,
                 timeout=timeout_seconds,
                 check=False,
@@ -91,23 +92,24 @@ def run_suite(suite: str, timeout_seconds: int = 120) -> dict[str, object]:
                     "PYTHONDONTWRITEBYTECODE": "1",
                     "PYTHONUNBUFFERED": "1",
                     "PYTHONPATH": str(WORKSPACE),
+                    "PYTEST_ADDOPTS": "-p no:cacheprovider",
+                    "MYPY_CACHE_DIR": "/tmp/mypy_cache",
                 },
             )
             exit_code = completed.returncode
-            output_bytes = completed.stdout or b""
             outcome = "passed" if exit_code == 0 else "failed"
-        except subprocess.TimeoutExpired as exc:
+        except subprocess.TimeoutExpired:
             timed_out = True
-            output_bytes = exc.stdout or b""
             outcome = "timed_out"
         except OSError as exc:
-            output_bytes = f"Worker could not start suite: {type(exc).__name__}".encode()
+            output_file.write(f"Worker could not start suite: {type(exc).__name__}".encode())
             outcome = "failed"
-    del devnull
+        output_file.flush()
+        output_file.seek(0)
+        output_bytes = output_file.read(OUTPUT_LIMIT + 1)
+        truncated = len(output_bytes) > OUTPUT_LIMIT or output_file.tell() < output_file.seek(0, os.SEEK_END)
     elapsed = round(time.monotonic() - started, 3)
-    output_text = output_bytes.decode("utf-8", errors="replace")
-    truncated = len(output_text) > OUTPUT_LIMIT
-    output_text = output_text[:OUTPUT_LIMIT]
+    output_text = output_bytes[:OUTPUT_LIMIT].decode("utf-8", errors="replace")
     return {
         "schema_version": 1,
         "suite": suite,
