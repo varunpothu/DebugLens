@@ -69,6 +69,20 @@ def test_provision_rejects_context_mismatch_and_cleans_output(tmp_path: Path) ->
     assert not output.exists()
 
 
+
+def test_provision_rejects_inconsistent_new_file_line_numbers(tmp_path: Path) -> None:
+    base, patch = prepare(tmp_path)
+    patch.write_text(PATCH.replace("@@ -1 +1 @@", "@@ -1 +2 @@"), encoding="utf-8")
+    with pytest.raises(ProvisionError, match="new-file line numbers"):
+        provision_workspace(
+            base_workspace=base,
+            patch_file=patch,
+            target_file="app.css",
+            output_workspace=tmp_path / "workspace",
+            base_revision="deadbeef",
+        )
+
+
 def test_provision_rejects_path_traversal_and_symlinks(tmp_path: Path) -> None:
     base, patch = prepare(tmp_path)
     with pytest.raises(ValueError):
