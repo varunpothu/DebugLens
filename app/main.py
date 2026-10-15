@@ -125,16 +125,22 @@ async def request_guardrails(request: Request, call_next: RequestResponseEndpoin
         try:
             declared_length = int(content_length)
         except ValueError:
-            response = JSONResponse(status_code=400, content={"detail": "Invalid Content-Length header."})
-            return _apply_response_headers(response, request)
+            return _apply_response_headers(
+                JSONResponse(status_code=400, content={"detail": "Invalid Content-Length header."}),
+                request,
+            )
         if declared_length < 0:
-            response = JSONResponse(status_code=400, content={"detail": "Invalid Content-Length header."})
-            return _apply_response_headers(response, request)
+            return _apply_response_headers(
+                JSONResponse(status_code=400, content={"detail": "Invalid Content-Length header."}),
+                request,
+            )
         # Allow multipart framing and form fields in addition to the bounded screenshot itself.
         max_request_bytes = settings.max_upload_bytes + 1024 * 1024
         if declared_length > max_request_bytes:
-            response = JSONResponse(status_code=413, content={"detail": "Request body exceeds the configured limit."})
-            return _apply_response_headers(response, request)
+            return _apply_response_headers(
+                JSONResponse(status_code=413, content={"detail": "Request body exceeds the configured limit."}),
+                request,
+            )
     response = await call_next(request)
     return _apply_response_headers(response, request)
 
