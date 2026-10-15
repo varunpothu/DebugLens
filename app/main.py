@@ -401,6 +401,7 @@ async def submit_execution_result(workflow_id: str, request: Request) -> dict:
     try:
         return record_execution_result(
             workflow_id,
+            execution_id=payload.execution_id,
             patch_sha256=payload.patch_sha256,
             suite=payload.suite,
             outcome=payload.outcome,
