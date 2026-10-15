@@ -40,6 +40,7 @@ def test_signed_payload_binds_patch_suite_and_workspace() -> None:
     payload = json.loads(body)
     assert signature == expected
     assert payload["patch_sha256"] == "b" * 64
+    assert isinstance(payload["execution_id"], str) and len(payload["execution_id"]) == 36
     assert payload["workspace_sha256"] == "a" * 64
     assert payload["suite"] == "pytest"
 
