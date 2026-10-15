@@ -381,31 +381,10 @@ def record_test_result(
         raise ValueError("Test outcome must be passed or failed.")
     if not actor.strip() or len(actor) > 120:
         raise ValueError("Actor must contain 1 to 120 characters.")
-    report_id = execution_id or str(uuid4())
+    report_id = str(uuid4())
     now = datetime.now(timezone.utc).isoformat()
     with _connect() as db:
         db.execute("BEGIN IMMEDIATE")
-        existing = db.execute(
-            "SELECT * FROM execution_reports WHERE report_id = ?", (report_id,)
-        ).fetchone()
-        if existing is not None:
-            same_report = (
-                existing["workflow_id"] == workflow_id
-                and existing["patch_sha256"] == patch_sha256
-                and existing["suite"] == suite
-                and existing["outcome"] == outcome
-                and existing["exit_code"] == exit_code
-                and bool(existing["timed_out"]) == timed_out
-                and float(existing["duration_seconds"]) == float(duration_seconds)
-                and existing["workspace_sha256"] == workspace_sha256
-                and existing["output"] == output
-                and bool(existing["output_truncated"]) == output_truncated
-                and existing["actor"] == actor
-            )
-            db.rollback()
-            if same_report:
-                return get_run(workflow_id)
-            raise ValueError("Execution ID has already been used for a different result.")
         row = db.execute("SELECT * FROM debug_runs WHERE workflow_id = ?", (workflow_id,)).fetchone()
         if row is None:
             db.rollback()
