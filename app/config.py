@@ -27,6 +27,10 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     @property
+    def allowed_browser_hosts(self) -> set[str]:
+        return {host.strip().lower().rstrip(".") for host in self.browser_allowed_hosts.split(",") if host.strip()}
+
+    @property
     def cors_origins(self) -> list[str]:
         return [origin.strip() for origin in self.allowed_origins.split(",") if origin.strip()]
 
