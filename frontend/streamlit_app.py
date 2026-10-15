@@ -138,6 +138,32 @@ with review_tab:
         if run.get("browser_evidence"):
             st.subheader("Browser evidence")
             st.json(run["browser_evidence"])
+        with st.expander("Collect approved browser evidence"):
+            st.caption("The API must have browser capture enabled and the target hostname must be allow-listed by the operator.")
+            with st.form("browser_capture_form"):
+                target_url = st.text_input("Approved test page URL", placeholder="https://your-approved-test-host.example/")
+                browser_actor = st.text_input("Capture requested by", value="local-reviewer", max_chars=120)
+                viewport_width = st.number_input("Viewport width", min_value=320, max_value=3840, value=1440)
+                viewport_height = st.number_input("Viewport height", min_value=320, max_value=2160, value=900)
+                capture_submitted = st.form_submit_button("Capture browser evidence")
+            if capture_submitted:
+                try:
+                    updated = api_post(
+                        f"/v1/debug-runs/{run['workflow_id']}/browser-evidence",
+                        json={
+                            "target_url": target_url,
+                            "actor": browser_actor,
+                            "viewport_width": int(viewport_width),
+                            "viewport_height": int(viewport_height),
+                        },
+                    )
+                    st.session_state["debuglens_loaded_run"] = updated
+                    st.success("Browser evidence attached. Raw browser screenshot was not retained.")
+                    st.rerun()
+                except (requests.RequestException, RuntimeError) as exc:
+                    st.error(f"Browser evidence was not collected: {exc}")
+        st.subheader("Investigation pipeline")
+        st.json(run["analysis"].get("investigation_pipeline", {}))
         st.subheader("Audit history")
         st.dataframe(run["events"], use_container_width=True, hide_index=True)
 
