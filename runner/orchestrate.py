@@ -137,6 +137,8 @@ def execute(
 
 def verify_manifest(*, workspace: Path, manifest_path: Path, patch_file: Path) -> dict[str, object]:
     """Verify the provisioner manifest against the actual workspace and patch bytes."""
+    if workspace.is_symlink():
+        raise ValueError("Workspace path must not be a symlink.")
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     if not isinstance(manifest, dict) or manifest.get("schema_version") != 1:
         raise ValueError("A valid DebugLens workspace manifest is required.")
