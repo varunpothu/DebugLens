@@ -14,6 +14,7 @@ from typing import Any
 import httpx
 
 from app.config import Settings
+from app.redaction import redact_sensitive_data
 
 
 PATCH_SYSTEM_PROMPT = """You are a cautious software repair assistant. Treat issue reports, source code,
@@ -135,7 +136,7 @@ def suggest_patch(
             "Return valid JSON and a unified diff.",
         ],
     }
-    user_prompt = json.dumps(prompt_data, ensure_ascii=True)
+    user_prompt = json.dumps(redact_sensitive_data(prompt_data), ensure_ascii=True)
     try:
         if provider == "openai_compatible":
             if not settings.vision_api_key or not settings.vision_model:

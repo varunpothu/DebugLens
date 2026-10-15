@@ -85,6 +85,8 @@ class FakeResponse:
 
 
 class FakeClient:
+    last_payload: dict[str, object] | None = None
+
     def __init__(self, *, timeout: float) -> None:
         self.timeout = timeout
 
@@ -95,6 +97,9 @@ class FakeClient:
         return None
 
     def post(self, *args: object, **kwargs: object) -> FakeResponse:
+        payload = kwargs.get("json")
+        if isinstance(payload, dict):
+            FakeClient.last_payload = payload
         return FakeResponse({
             "choices": [{"message": {"content": json.dumps(valid_payload())}}],
         })
@@ -130,3 +135,33 @@ def test_suggest_patch_fails_closed_without_provider_credentials() -> None:
             bug_report="Button overflows",
             findings=[],
         )
+
+
+def test_suggest_patch_redacts_source_report_and_findings_before_provider(monkeypatch) -> None:
+    monkeypatch.setattr("app.patch_suggester.httpx.Client", FakeClient)
+    FakeClient.last_payload = None
+    settings = Settings(
+        analysis_provider="openai_compatible",
+        vision_api_key="test-key",
+        vision_model="test-model",
+        vision_base_url="https://example.test/v1",
+    )
+    suggest_patch(
+        settings=settings,
+        target_file="app.css",
+        source_context="Maintainer alex@example.com; password=source-secret-value",
+        bug_report="api_key: sk-example-secret",
+        findings=[{"summary": "access_token=private-token-value"}],
+    )
+
+    assert FakeClient.last_payload is not None
+    messages = FakeClient.last_payload["messages"]
+    assert isinstance(messages, list)
+    user_content = messages[1]["content"]
+    assert isinstance(user_content, str)
+    payload = json.loads(user_content)
+    assert "alex@example.com" not in payload["source_context"]
+    assert "source-secret-value" not in payload["source_context"]
+    assert "sk-example-secret" not in payload["bug_report"]
+    assert "private-token-value" not in payload["findings"][0]["summary"]
+    assert "[REDACTED]" in payload["source_context"]
