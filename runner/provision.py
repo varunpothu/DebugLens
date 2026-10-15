@@ -44,7 +44,7 @@ def sha256_bytes(data: bytes) -> str:
 
 def _is_excluded(relative: Path) -> bool:
     parts = relative.parts
-    if any(part in EXCLUDED_DIRS or part in EXCLUDED_NAMES for part in parts[:-1]):
+    if any(part in EXCLUDED_DIRS or part in EXCLUDED_NAMES for part in parts):
         return True
     name = relative.name
     lower = name.lower()
@@ -62,8 +62,10 @@ def _is_excluded(relative: Path) -> bool:
 def _copy_base(source: Path, destination: Path) -> tuple[int, int]:
     count = 0
     total = 0
+    if source.is_symlink():
+        raise ProvisionError("Base workspace path must not be a symlink.")
     source = source.resolve(strict=True)
-    if not source.is_dir() or source.is_symlink():
+    if not source.is_dir():
         raise ProvisionError("Base workspace must be an existing real directory.")
     destination.mkdir(parents=True, exist_ok=False)
     for root, dirs, files in os.walk(source, topdown=True, followlinks=False):
@@ -181,7 +183,10 @@ def provision_workspace(
     base_revision: str,
 ) -> dict[str, Any]:
     """Build a patched disposable workspace and return its external manifest."""
-    base_workspace = base_workspace.expanduser().resolve(strict=True)
+    base_workspace = base_workspace.expanduser()
+    if base_workspace.is_symlink():
+        raise ProvisionError("Base workspace path must not be a symlink.")
+    base_workspace = base_workspace.resolve(strict=True)
     patch_file = patch_file.expanduser().resolve(strict=True)
     output_workspace = output_workspace.expanduser().absolute()
     if output_workspace.exists() or output_workspace.is_symlink():
