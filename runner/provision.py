@@ -52,7 +52,7 @@ def _git_output(source: Path, *arguments: str) -> str:
         raise ProvisionError("Unable to verify the source with Git.") from exc
     if result.returncode != 0:
         raise ProvisionError("Base workspace must be a valid local Git checkout.")
-    return result.stdout.decode("utf-8", errors="strict").rstrip("\\r\\n")
+    return result.stdout.decode("utf-8", errors="strict").rstrip(bytes([10, 13]).decode("ascii"))
 
 
 def verify_git_base(source: Path, expected_revision: str) -> str:
@@ -183,7 +183,7 @@ def _apply_unified_diff(workspace: Path, patch_text: str, target_file: str) -> N
         raise ProvisionError("Patch must modify exactly the requested repository-relative file.")
     header_index = 1
     if lines[header_index].startswith("index "):
-        if not re.fullmatch(r"index [0-9a-f]+\\.\\.[0-9a-f]+(?: [0-7]{6})?", lines[header_index]):
+        if not re.fullmatch(r"index [0-9a-f]+\.\.[0-9a-f]+(?: [0-7]{6})?", lines[header_index]):
             raise ProvisionError("Patch contains malformed Git index metadata.")
         header_index += 1
     if lines[header_index] != f"--- a/{target_file}" or lines[header_index + 1] != f"+++ b/{target_file}":
