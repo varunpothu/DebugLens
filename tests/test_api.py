@@ -334,3 +334,22 @@ def test_api_blocks_external_screenshot_transfer_without_opt_in(monkeypatch) -> 
     )
     assert response.status_code == 403
     assert "ALLOW_UNREDACTED_SCREENSHOTS=true" in response.json()["detail"]
+
+
+def test_api_sets_conservative_security_headers() -> None:
+    response = client.get("/health")
+    assert response.headers["X-Content-Type-Options"] == "nosniff"
+    assert response.headers["X-Frame-Options"] == "DENY"
+    assert response.headers["Referrer-Policy"] == "no-referrer"
+    assert response.headers["Cache-Control"] == "no-store"
+
+
+def test_api_rejects_declared_oversized_request_body() -> None:
+    oversized = main.settings.max_upload_bytes + 1024 * 1024 + 1
+    response = client.post(
+        "/v1/analyses",
+        headers={"Content-Length": str(oversized)},
+        files={"screenshot": ("screen.png", png_bytes(), "image/png")},
+    )
+    assert response.status_code == 413
+    assert response.json()["detail"] == "Request body exceeds the configured limit."
