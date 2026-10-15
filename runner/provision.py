@@ -268,7 +268,7 @@ def main() -> int:
     parser.add_argument("--patch-file", required=True, type=Path)
     parser.add_argument("--target-file", required=True)
     parser.add_argument("--output-workspace", required=True, type=Path)
-    parser.add_argument("--base-revision", required=True, help="Human-supplied immutable revision identifier")
+    parser.add_argument("--base-revision", required=True, help="Exact 40-character SHA of the clean Git HEAD")
     parser.add_argument("--manifest", required=True, type=Path, help="Manifest path outside the output workspace")
     args = parser.parse_args()
     try:
