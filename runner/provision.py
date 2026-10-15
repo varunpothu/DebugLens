@@ -11,6 +11,7 @@ import json
 import os
 import re
 import shutil
+import subprocess
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -31,6 +32,45 @@ EXCLUDED_FILES = {
 }
 EXCLUDED_SUFFIXES = {".pem", ".key", ".p12", ".pfx", ".sqlite", ".sqlite3", ".db"}
 EXCLUDED_NAMES = {".aws", ".ssh", ".azure", ".gnupg"}
+
+
+
+GIT_SHA = re.compile(r"^[0-9a-f]{40}$")
+
+
+def _git_output(source: Path, *arguments: str) -> str:
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(source), *arguments],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=10,
+            check=False,
+            shell=False,
+            close_fds=True,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise ProvisionError("Unable to verify the source with Git.") from exc
+    if result.returncode != 0:
+        raise ProvisionError("Base workspace must be a valid local Git checkout.")
+    return result.stdout.decode("utf-8", errors="strict").strip()
+
+
+def verify_git_base(source: Path, expected_revision: str) -> str:
+    """Require an exact commit SHA and a clean Git working tree."""
+    if not GIT_SHA.fullmatch(expected_revision):
+        raise ProvisionError("Base revision must be a full 40-character Git commit SHA.")
+    top_level = Path(_git_output(source, "rev-parse", "--show-toplevel")).resolve(strict=True)
+    if top_level != source.resolve(strict=True):
+        raise ProvisionError("Base workspace must be the Git repository root.")
+    actual_revision = _git_output(source, "rev-parse", "--verify", "HEAD^{commit}")
+    if actual_revision != expected_revision:
+        raise ProvisionError("Checked-out HEAD does not match the supplied base revision.")
+    status = _git_output(source, "status", "--porcelain", "--untracked-files=all")
+    if status:
+        raise ProvisionError("Git working tree must be clean with no untracked files.")
+    return actual_revision
 
 
 class ProvisionError(ValueError):
@@ -195,8 +235,7 @@ def provision_workspace(
         raise ProvisionError("Output workspace must not already exist.")
     if output_workspace == base_workspace or base_workspace in output_workspace.parents:
         raise ProvisionError("Output workspace must not be inside the source workspace.")
-    if not base_revision.strip() or len(base_revision) > 160:
-        raise ProvisionError("A non-empty base revision identifier (max 160 characters) is required.")
+    verified_revision = verify_git_base(base_workspace, base_revision.strip())
     patch_bytes = patch_file.read_bytes()
     if len(patch_bytes) > MAX_PATCH_BYTES:
         raise ProvisionError("Patch exceeds the 200,000-byte limit.")
@@ -215,7 +254,7 @@ def provision_workspace(
         raise
     return {
         "schema_version": 1,
-        "base_revision": base_revision.strip(),
+        "base_revision": verified_revision,
         "base_workspace_sha256": base_digest,
         "patch_sha256": sha256_bytes(patch_bytes),
         "target_file": validate_target_file(target_file),
