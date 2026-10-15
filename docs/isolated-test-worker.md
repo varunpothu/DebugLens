@@ -54,12 +54,43 @@ python -m runner.orchestrate \
   --api-url http://127.0.0.1:8000
 ```
 
-The orchestrator checks the worker exit status, adds the current patch digest, signs the canonical payload, and submits it to the API. It returns a non-zero exit code when the suite fails or submission is rejected. The operator is responsible for ensuring the mounted workspace is the exact reviewed source state corresponding to the patch digest; the prototype does not apply or independently reconstruct a patch.
+The orchestrator checks the worker exit status, adds the current patch digest, signs the canonical payload, and submits it to the API. It returns a non-zero exit code when the suite fails or submission is rejected. The orchestrator now requires the manifest and original patch file used by provisioning. It re-hashes the patch bytes and mounted workspace before execution, then rejects a worker result if its suite or workspace digest differs from the host snapshot. The manifest binds the base-tree digest, patch digest, target path, and final workspace digest. The base_revision field is operator-supplied audit metadata; it is not independently resolved against Git, so the base-tree digest is the cryptographic identifier of the actual source snapshot.
+
+
+## Provision a reviewed workspace
+
+Start from a trusted source snapshot and a single-file unified diff that has already been reviewed. The provisioner copies the source into a new directory, excludes common caches, local databases and secret-like files, rejects symlinks and oversized trees, then applies the patch only when every removed/context line exactly matches the base file. It never writes to the base tree and never executes the patched code.
+
+```bash
+python -m runner.provision \
+  --base-workspace ./trusted-base \
+  --patch-file ./reviewed.patch \
+  --target-file app/styles.css \
+  --output-workspace ./provisioned-workspace \
+  --base-revision YOUR_REVIEWED_BASE_REF \
+  --manifest ./provisioned-workspace-manifest.json
+```
+
+Then run the test suite using that exact workspace, patch and manifest:
+
+```bash
+python -m runner.orchestrate \
+  --workspace ./provisioned-workspace \
+  --patch-file ./reviewed.patch \
+  --manifest ./provisioned-workspace-manifest.json \
+  --suite pytest \
+  --workflow-id YOUR_WORKFLOW_ID \
+  --actor local-reviewer \
+  --api-url http://127.0.0.1:8000
+```
+
+The manifest must be stored outside the provisioned workspace. The output directory must not already exist. The provisioner supports existing UTF-8 text files only; file creation/deletion, multiple-file diffs, binary changes, rename/copy operations and fuzzy patching are deliberately unsupported. The base revision string is currently audit metadata, not a Git-verified commit reference. Review the manifest and base-tree digest before trusting a result.
 
 ## Important limitations
 
 - The worker container is a sandbox boundary only when launched with the restrictions above. Running `runner/worker.py` directly on a host is not isolated.
 - The workspace must be created and reviewed by a trusted orchestrator; the worker does not apply a patch or verify that a supplied patch digest matches a diff.
 - The worker's output is evidence, not approval. Human review and explicit approval remain required.
+- The manifest is a local integrity check, not a signed attestation of the base revision. Protect the trusted host, patch file, manifest, and Docker daemon; an operator who controls all inputs can forge them.
 - Remaining integration work includes trusted workspace provisioning from the reviewed patch, authenticated job submission, queueing/cancellation, container lifecycle management, and production security review. The API persists the suite and workspace digest and rejects verification when the latest trusted execution report does not match the current patch digest.
 - Output is redirected to a temporary file inside the container and only the first 20,001 bytes are read into memory. The container's tmpfs size and memory limit remain important safety boundaries.
