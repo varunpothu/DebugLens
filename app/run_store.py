@@ -66,6 +66,7 @@ def create_run(
     analysis: dict[str, Any],
     browser_evidence: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    initialise_store()
     workflow = DebugWorkflow()
     now = datetime.now(timezone.utc).isoformat()
     workflow.transition(WorkflowState.VALIDATED, actor="system", reason="Screenshot passed upload and decode validation.")
@@ -107,6 +108,7 @@ def create_run(
 
 
 def get_run(workflow_id: str) -> dict[str, Any]:
+    initialise_store()
     with _connect() as db:
         row = db.execute("SELECT * FROM debug_runs WHERE workflow_id = ?", (workflow_id,)).fetchone()
     if row is None:
@@ -115,6 +117,7 @@ def get_run(workflow_id: str) -> dict[str, Any]:
 
 
 def list_runs(limit: int = 20) -> list[dict[str, Any]]:
+    initialise_store()
     safe_limit = max(1, min(limit, 100))
     with _connect() as db:
         rows = db.execute(
@@ -126,6 +129,7 @@ def list_runs(limit: int = 20) -> list[dict[str, Any]]:
 def transition_run(
     workflow_id: str, *, target: WorkflowState, actor: str, reason: str
 ) -> dict[str, Any]:
+    initialise_store()
     if not actor.strip() or len(actor) > 120:
         raise ValueError("Actor must contain 1 to 120 characters.")
     if not reason.strip() or len(reason) > 1000:
