@@ -395,7 +395,7 @@ def _run_job(job: dict[str, Any], worker_id: str) -> dict[str, Any]:
         "--actor", payload["actor"],
         "--api-url", payload["api_url"],
     ]
-    with tempfile.TemporaryFile(mode="w+b", dir="/tmp") as output_file:
+    with tempfile.TemporaryFile(mode="w+b") as output_file:
         try:
             process = subprocess.Popen(
                 command,
@@ -422,7 +422,11 @@ def _run_job(job: dict[str, Any], worker_id: str) -> dict[str, Any]:
         output = output_file.read(OUTPUT_LIMIT + 1).decode("utf-8", errors="replace")
         if len(output) > OUTPUT_LIMIT:
             output = output[:OUTPUT_LIMIT] + "\n[output truncated]"
-        return finish_job(job["job_id"], worker_id, exit_code=exit_code, output=output)
+        try:
+            return finish_job(job["job_id"], worker_id, exit_code=exit_code, output=output)
+        except ValueError:
+            # A recovered lease belongs to another worker; do not overwrite its state.
+            return get_job(job["job_id"])
 
 
 def worker_loop(*, worker_id: str, concurrency_limit: int = 1, once: bool = False) -> None:
