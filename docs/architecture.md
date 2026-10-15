@@ -18,8 +18,8 @@
 - **Browser evidence collector:** optional Playwright capture behind a disabled-by-default endpoint. It captures screenshot analysis, page title, viewport, tag counts, console error types, page error classes, and failed-request counts. Exact hostname allow-listing is necessary but not sufficient without network egress controls.
 - **Model comparison harness:** records provider output summaries and latency. Correctness requires a labelled benchmark and human adjudication.
 - **Streamlit dashboard:** create investigations, browse history, inspect findings, and record legal workflow transitions.
-- **Repair proposer (planned):** emits a diff and rationale. It must not execute or merge the diff.
-- **Verifier (planned):** runs tests and visual comparisons in an isolated worker and records both passing and failing checks.
+- **Repair proposer:** emits a bounded single-file diff, rationale, risk rating, and rollback plan. It never applies or commits the diff.
+- **Isolated test verifier:** a host-side orchestrator runs allow-listed suites in a network-disabled, read-only Docker container with resource limits. A Git-verified provisioner applies a strict single-file patch to a disposable copy. The local SQLite queue adds idempotency, leases, cancellation, bounded infrastructure retries, and dead-letter replay. Signed HMAC execution results are tied to the current patch digest; visual regression metrics are available as a local utility.
 
 ## State machine
 
@@ -33,7 +33,7 @@ The run store retains screenshot SHA-256 digests and structured analysis, not or
 
 ## Security boundary
 
-The API currently has no authentication, authorisation, rate limiting, or tenant isolation. Keep it local or inside a trusted development environment. The browser endpoint is disabled by default and must only be enabled in a disposable worker with exact host allow-lists and network-level SSRF/egress controls. Do not treat application-level URL checks as a substitute for firewall rules.
+The API supports an optional bearer token and requires one when `APP_ENV=production`, but does not yet provide user identity, role-based authorisation, rate limiting, or tenant isolation. Keep it local or inside a trusted development environment. The browser endpoint is disabled by default and must only be enabled in a disposable worker with exact host allow-lists and network-level SSRF/egress controls. Do not treat application-level URL checks as a substitute for firewall rules.
 
 ## Production deployment target
 
