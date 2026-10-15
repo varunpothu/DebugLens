@@ -167,33 +167,57 @@ with review_tab:
         st.subheader("Investigation pipeline")
         st.json(run["analysis"].get("investigation_pipeline", {}))
 
-        if run["state"] == "reproduced":
-            st.subheader("Propose a patch")
-            st.warning("This records a proposed diff only. DebugLens does not apply or execute it.")
-            with st.form("patch_proposal_form"):
-                patch_diff = st.text_area("Unified diff", height=240, max_chars=200000)
-                rationale = st.text_area("Why this change should fix the issue", max_chars=3000)
-                risk = st.selectbox("Risk", ["low", "medium", "high", "critical"])
-                rollback_plan = st.text_area("Rollback plan", max_chars=2000)
-                patch_actor = st.text_input("Proposed by", value="local-reviewer", max_chars=120)
-                patch_submitted = st.form_submit_button("Save patch proposal")
-            if patch_submitted:
-                try:
-                    updated = api_post(
-                        f"/v1/debug-runs/{run['workflow_id']}/patch-proposals",
-                        json={
-                            "patch_diff": patch_diff,
-                            "rationale": rationale,
-                            "risk": risk,
-                            "rollback_plan": rollback_plan,
-                            "actor": patch_actor,
-                        },
-                    )
-                    st.session_state["debuglens_loaded_run"] = updated
-                    st.success("Patch proposal saved and bound to its SHA-256 digest.")
-                    st.rerun()
-                except (requests.RequestException, RuntimeError) as exc:
-                    st.error(f"Patch proposal was not saved: {exc}")
+        if run["state"] in {"reproduced", "patch_proposed"}:
+            st.subheader("Propose or revise a patch")
+            st.warning("DebugLens stores a proposal only. It never applies or executes a patch.")
+            with st.expander("Generate AI-assisted patch suggestion"):
+                st.warning("The source context and issue report will be sent to the configured model provider. Do not submit secrets or confidential source code without approval.")
+                with st.form("ai_patch_suggestion_form"):
+                    target_file = st.text_input("Repository-relative target file", placeholder="src/components/button.css")
+                    source_context = st.text_area("Relevant source context", height=220, max_chars=50000)
+                    suggestion_actor = st.text_input("Suggestion requested by", value="local-reviewer", max_chars=120)
+                    ai_suggestion_submitted = st.form_submit_button("Generate and save review-only suggestion")
+                if ai_suggestion_submitted:
+                    try:
+                        updated = api_post(
+                            f"/v1/debug-runs/{run['workflow_id']}/patch-suggestions",
+                            json={
+                                "target_file": target_file,
+                                "source_context": source_context,
+                                "actor": suggestion_actor,
+                            },
+                        )
+                        st.session_state["debuglens_loaded_run"] = updated
+                        st.success("AI-assisted patch proposal saved. Review the diff before any use.")
+                        st.rerun()
+                    except (requests.RequestException, RuntimeError) as exc:
+                        st.error(f"Patch suggestion was not generated: {exc}")
+
+            with st.expander("Submit a manually prepared diff"):
+                with st.form("patch_proposal_form"):
+                    patch_diff = st.text_area("Unified diff", height=240, max_chars=200000)
+                    rationale = st.text_area("Why this change should fix the issue", max_chars=3000)
+                    risk = st.selectbox("Risk", ["low", "medium", "high", "critical"])
+                    rollback_plan = st.text_area("Rollback plan", max_chars=2000)
+                    patch_actor = st.text_input("Proposed by", value="local-reviewer", max_chars=120)
+                    patch_submitted = st.form_submit_button("Save manual patch proposal")
+                if patch_submitted:
+                    try:
+                        updated = api_post(
+                            f"/v1/debug-runs/{run['workflow_id']}/patch-proposals",
+                            json={
+                                "patch_diff": patch_diff,
+                                "rationale": rationale,
+                                "risk": risk,
+                                "rollback_plan": rollback_plan,
+                                "actor": patch_actor,
+                            },
+                        )
+                        st.session_state["debuglens_loaded_run"] = updated
+                        st.success("Patch proposal saved and bound to its SHA-256 digest.")
+                        st.rerun()
+                    except (requests.RequestException, RuntimeError) as exc:
+                        st.error(f"Patch proposal was not saved: {exc}")
 
         proposal = run.get("patch_proposal")
         if proposal:
