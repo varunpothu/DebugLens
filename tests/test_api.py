@@ -140,7 +140,7 @@ def test_debug_run_rejects_invalid_context() -> None:
 
 
 
-def test_patch_proposal_and_test_result_api_enforce_digest_gate() -> None:
+def test_patch_proposal_and_test_result_api_enforce_digest_gate(monkeypatch) -> None:
     created = client.post(
         "/v1/debug-runs",
         files={"screenshot": ("screen.png", png_bytes(), "image/png")},
