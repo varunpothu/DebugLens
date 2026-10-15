@@ -71,6 +71,13 @@
 - [ ] Require green machine-captured checks and explicit human approval before repository changes
 - [ ] Add rollback and regression verification
 
+## Data lifecycle
+
+- [x] Add a dry-run-first local SQLite retention CLI that only deletes old terminal workflows and their patch/test/execution child records
+- [x] Write an aggregate audit event for explicit retention runs
+- [ ] Extend retention/deletion verification to S3 objects, backups, logs, provider-side copies, and container artifacts
+- [ ] Add tenant-scoped deletion requests and legal-hold support before multi-user deployment
+
 ## Phase 5: Production operations and AWS
 
 - [x] Private encrypted S3 artifact-storage Terraform baseline with KMS, public-access blocking, TLS-only policy, and lifecycle expiry

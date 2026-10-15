@@ -7,6 +7,7 @@
 - API supports a configured bearer token; production startup refuses to run without `API_ACCESS_TOKEN`.
 - Uploads have content-type, byte-size, image-format, and pixel-count checks; an app-level guard rejects oversized declared `Content-Length` bodies.
 - API responses add `nosniff`, frame-denial, no-referrer, and no-store headers. The body guard does not replace streaming limits at a reverse proxy and does not independently cap chunked requests without `Content-Length`.
+- A dry-run-first CLI can delete old terminal workflows and related local SQLite records, with an aggregate retention audit event. It does not delete S3 objects, backups, logs, provider-side copies, or containers.
 - Common sensitive text patterns are redacted before outbound vision-provider calls.
 - External vision-provider image transfer is denied by default because screenshot pixels are not redacted; the operator must explicitly set `ALLOW_UNREDACTED_SCREENSHOTS=true` to opt in. This is not a substitute for OCR redaction or privacy review.
 - Browser capture is disabled by default and requires an exact hostname allow-list.
