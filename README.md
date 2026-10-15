@@ -4,7 +4,7 @@
 
 DebugLens turns a UI failure report into a traceable investigation. It validates screenshots, records evidence metadata, optionally calls a vision-capable model, returns structured findings, and makes clear what remains unverified. The longer-term workflow correlates screenshots with browser/runtime evidence, proposes regression tests, and prepares fixes for human review.
 
-> **Current maturity:** DebugLens has a local end-to-end investigation lifecycle with SQLite persistence, audit history, a Streamlit review dashboard, deterministic evidence/test-planning stages, optional allow-listed Playwright capture, AI-assisted and manual patch proposals, and digest-bound test-result gates. Three vision provider adapters, model comparison, CI, a demo UI, and a private S3 Terraform baseline are also included. Patch application, production-integrated execution orchestration, full LLM agent orchestration, user identity/roles, production-grade isolation, and full AWS application deployment remain incomplete. This is not safe to expose as a public service.
+> **Current maturity:** DebugLens includes a local investigation lifecycle, SQLite audit history, Streamlit review dashboard, three vision-provider adapters, model comparison, allow-listed browser evidence, review-only patch proposals, signed execution-result ingestion, a network-disabled Docker test worker, a Git-verified patch workspace provisioner, and a durable local SQLite execution queue with cancellation and dead-letter replay. A deterministic pixel-diff utility is available for screenshot regression checks. Full LLM specialist-agent orchestration, automatic PII redaction, independent sandbox review, production identity/roles/tenant isolation, and the AWS application deployment are still incomplete. Keep the service local or in a trusted development environment; do not expose it as a public service.
 
 ## Product principles
 
@@ -54,8 +54,8 @@ Planned: sandboxed tests -> proposed patch -> human verification
 - app/: FastAPI API, typed contracts, multimodal adapters, deterministic investigation stages, evaluation harness, SQLite run store, workflow state machine and optional browser capture.
 - tests/: API, image validation, model comparison and workflow transition tests.
 - frontend/: optional Streamlit upload client.
-- docs/: architecture, agent workflow, threat model, evaluation, operations, isolated-worker contract, roadmap.
-- runner/: standalone allowlisted test worker prototype; not yet connected to API.
+- docs/: architecture, agent workflow, threat model, evaluation, operations, isolated-worker contract, visual regression guide, and roadmap.
+- runner/: allowlisted test worker, Docker orchestrator, Git-verified workspace provisioner, and durable local execution queue.
 - .github/workflows/: CI quality gates.
 - examples/demo-ui/: intentionally broken and fixed synthetic storefront for reproducible demos.
 - Dockerfile and docker-compose.yml: local container setup.
