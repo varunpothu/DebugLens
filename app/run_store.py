@@ -72,6 +72,24 @@ def initialise_store() -> None:
             )"""
         )
         db.execute("CREATE INDEX IF NOT EXISTS idx_test_reports_run ON test_reports(workflow_id, created_at DESC)")
+        db.execute(
+            """CREATE TABLE IF NOT EXISTS execution_reports (
+                report_id TEXT PRIMARY KEY,
+                workflow_id TEXT NOT NULL,
+                patch_sha256 TEXT NOT NULL,
+                suite TEXT NOT NULL,
+                outcome TEXT NOT NULL,
+                exit_code INTEGER,
+                timed_out INTEGER NOT NULL,
+                duration_seconds REAL NOT NULL,
+                workspace_sha256 TEXT NOT NULL,
+                output TEXT NOT NULL,
+                output_truncated INTEGER NOT NULL,
+                actor TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            )"""
+        )
+        db.execute("CREATE INDEX IF NOT EXISTS idx_execution_reports_run ON execution_reports(workflow_id, created_at DESC)")
 
 
 def _event_dict(event: Any) -> dict[str, Any]:
@@ -148,11 +166,21 @@ def get_run(workflow_id: str) -> dict[str, Any]:
             "FROM test_reports WHERE workflow_id = ? ORDER BY created_at DESC",
             (workflow_id,),
         ).fetchall()
+        execution_reports = db.execute(
+            "SELECT report_id, patch_sha256, suite, outcome, exit_code, timed_out, duration_seconds, "
+            "workspace_sha256, output, output_truncated, actor, created_at "
+            "FROM execution_reports WHERE workflow_id = ? ORDER BY created_at DESC",
+            (workflow_id,),
+        ).fetchall()
     if row is None:
         raise KeyError(workflow_id)
     result = _decode_row(row)
     result["patch_proposal"] = dict(proposal) if proposal is not None else None
     result["test_reports"] = [dict(report) for report in reports]
+    result["execution_reports"] = [
+        {**dict(report), "timed_out": bool(report["timed_out"]), "output_truncated": bool(report["output_truncated"])}
+        for report in execution_reports
+    ]
     return result
 
 
@@ -192,15 +220,21 @@ def transition_run(
                 (workflow_id,),
             ).fetchone()
             report = db.execute(
-                "SELECT patch_sha256, outcome FROM test_reports WHERE workflow_id = ? ORDER BY created_at DESC LIMIT 1",
+                "SELECT patch_sha256, outcome, exit_code, timed_out FROM execution_reports "
+                "WHERE workflow_id = ? ORDER BY created_at DESC LIMIT 1",
                 (workflow_id,),
             ).fetchone()
             if current != WorkflowState.TESTED or patch is None or report is None:
                 db.rollback()
-                raise ValueError("Verification requires a proposed patch and a recorded test result.")
-            if report["outcome"] != "passed" or report["patch_sha256"] != patch["patch_sha256"]:
+                raise ValueError("Verification requires a proposed patch and a trusted execution report.")
+            if (
+                report["outcome"] != "passed"
+                or report["exit_code"] != 0
+                or bool(report["timed_out"])
+                or report["patch_sha256"] != patch["patch_sha256"]
+            ):
                 db.rollback()
-                raise ValueError("Verification requires a passing test result for the current patch digest.")
+                raise ValueError("Verification requires a passing execution report for the current patch digest.")
         workflow = DebugWorkflow(workflow_id=workflow_id, state=current)
         try:
             event = workflow.transition(target, actor=actor, reason=reason)
@@ -412,6 +446,109 @@ def record_test_result(
         )
         db.commit()
     return get_run(workflow_id)
+
+
+def record_execution_result(
+    workflow_id: str,
+    *,
+    patch_sha256: str,
+    suite: str,
+    outcome: str,
+    exit_code: int | None,
+    timed_out: bool,
+    duration_seconds: float,
+    workspace_sha256: str,
+    output: str,
+    output_truncated: bool,
+    actor: str,
+) -> dict[str, Any]:
+    """Persist a signed orchestrator's execution result for the current patch."""
+    initialise_store()
+    if suite not in {"pytest", "ruff", "mypy"}:
+        raise ValueError("Execution suite is not allow-listed.")
+    if outcome not in {"passed", "failed", "timed_out"}:
+        raise ValueError("Invalid execution outcome.")
+    if outcome == "passed" and (exit_code != 0 or timed_out):
+        raise ValueError("A passing result requires exit code zero and no timeout.")
+    if outcome == "timed_out" and not timed_out:
+        raise ValueError("Timed-out outcome must set timed_out=true.")
+    if not actor.strip() or len(actor) > 120:
+        raise ValueError("Actor must contain 1 to 120 characters.")
+    if len(output) > 20000 or len(duration_seconds.__str__()) > 32:
+        raise ValueError("Execution result exceeds safety limits.")
+    report_id = str(uuid4())
+    now = datetime.now(timezone.utc).isoformat()
+    with _connect() as db:
+        db.execute("BEGIN IMMEDIATE")
+        row = db.execute("SELECT * FROM debug_runs WHERE workflow_id = ?", (workflow_id,)).fetchone()
+        if row is None:
+            db.rollback()
+            raise KeyError(workflow_id)
+        record = _decode_row(row)
+        current = WorkflowState(record["state"])
+        patch = db.execute(
+            "SELECT patch_sha256 FROM patch_proposals WHERE workflow_id = ? ORDER BY created_at DESC LIMIT 1",
+            (workflow_id,),
+        ).fetchone()
+        if current not in {WorkflowState.PATCH_PROPOSED, WorkflowState.TESTED}:
+            db.rollback()
+            raise ValueError("Execution results can only be recorded for a proposed patch.")
+        if patch is None or patch["patch_sha256"] != patch_sha256:
+            db.rollback()
+            raise ValueError("Execution result must reference the current patch SHA-256 digest.")
+        events = record["events"]
+        next_state = current
+        if outcome == "passed" and current == WorkflowState.PATCH_PROPOSED:
+            workflow = DebugWorkflow(workflow_id=workflow_id, state=current)
+            event = workflow.transition(
+                WorkflowState.TESTED,
+                actor=actor,
+                reason=f"Isolated {suite} execution passed for patch {patch_sha256}.",
+            )
+            events.append(_event_dict(event))
+            next_state = WorkflowState.TESTED
+        elif outcome != "passed" and current == WorkflowState.TESTED:
+            workflow = DebugWorkflow(workflow_id=workflow_id, state=current)
+            event = workflow.transition(
+                WorkflowState.PATCH_PROPOSED,
+                actor=actor,
+                reason=f"Isolated {suite} execution did not pass; another review is required.",
+            )
+            events.append(_event_dict(event))
+            next_state = WorkflowState.PATCH_PROPOSED
+        events.append({
+            "event_type": "execution_result_recorded",
+            "event_id": report_id,
+            "workflow_id": workflow_id,
+            "from_state": current.value,
+            "to_state": next_state.value,
+            "actor": actor,
+            "reason": f"Isolated {suite} execution outcome: {outcome}.",
+            "timestamp": now,
+            "patch_sha256": patch_sha256,
+            "workspace_sha256": workspace_sha256,
+            "suite": suite,
+            "outcome": outcome,
+            "exit_code": exit_code,
+            "timed_out": timed_out,
+        })
+        db.execute(
+            """INSERT INTO execution_reports
+            (report_id, workflow_id, patch_sha256, suite, outcome, exit_code, timed_out,
+             duration_seconds, workspace_sha256, output, output_truncated, actor, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                report_id, workflow_id, patch_sha256, suite, outcome, exit_code, int(timed_out),
+                duration_seconds, workspace_sha256, output, int(output_truncated), actor, now,
+            ),
+        )
+        db.execute(
+            "UPDATE debug_runs SET state = ?, updated_at = ?, events_json = ? WHERE workflow_id = ?",
+            (next_state.value, now, json.dumps(events, separators=(",", ":")), workflow_id),
+        )
+        db.commit()
+    return get_run(workflow_id)
+
 
 def _decode_row(row: sqlite3.Row) -> dict[str, Any]:
     return {
