@@ -7,8 +7,8 @@ services:
       - .env
     environment:
       APP_ENV: local
-      ANALYSIS_PROVIDER: mock
       DATABASE_PATH: /data/debuglens.db
+      BROWSER_ENABLED: "false"
     volumes:
       - debuglens_data:/data
     read_only: true
