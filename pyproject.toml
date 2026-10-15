@@ -25,7 +25,7 @@ dev = [
   "types-Pillow",
 ]
 ui = ["streamlit>=1.39,<2.0", "requests>=2.32,<3.0"]
-browser = ["playwright>=1.48,<2.0"]
+browser = ["playwright>=1.63.0,<2.0"]
 
 [tool.setuptools.packages.find]
 include = ["app*", "runner*"]
