@@ -62,7 +62,7 @@ def test_transition_requires_legal_state_and_audit_reason() -> None:
     with pytest.raises(ValueError, match="Verification requires a proposed patch"):
         transition_run(
             run["workflow_id"],
-            target=WorkflowState.VERIFIED,
+            target=WorkflowState.RECEIVED,
             actor="reviewer",
             reason="Trying to skip required checks",
         )
