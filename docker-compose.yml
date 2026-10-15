@@ -8,6 +8,9 @@ services:
     environment:
       APP_ENV: local
       ANALYSIS_PROVIDER: mock
+      DATABASE_PATH: /data/debuglens.db
+    volumes:
+      - debuglens_data:/data
     read_only: true
     tmpfs:
       - /tmp:size=64m,noexec,nosuid
@@ -16,3 +19,6 @@ services:
     cap_drop:
       - ALL
     restart: unless-stopped
+
+volumes:
+  debuglens_data:
