@@ -87,6 +87,26 @@ def test_provision_creates_exact_patched_copy_without_mutating_base(tmp_path: Pa
 
 
 @pytest.mark.skipif(shutil.which("git") is None, reason="Git is not installed in the restricted worker image")
+
+def test_provision_accepts_standard_git_index_metadata(tmp_path: Path) -> None:
+    base, patch = prepare(tmp_path)
+    patch.write_text(
+        PATCH.replace(
+            "diff --git a/app.css b/app.css\\n",
+            "diff --git a/app.css b/app.css\\nindex abcdef0..abcdef1 100644\\n",
+        ),
+        encoding="utf-8",
+    )
+    manifest = provision_workspace(
+        base_workspace=base,
+        patch_file=patch,
+        target_file="app.css",
+        output_workspace=tmp_path / "workspace",
+        base_revision=revision(base),
+    )
+    assert manifest["patch_sha256"] == sha256(patch.read_bytes()).hexdigest()
+
+
 def test_provision_requires_matching_clean_git_revision(tmp_path: Path) -> None:
     base, patch = prepare(tmp_path)
     with pytest.raises(ProvisionError, match="does not match"):
