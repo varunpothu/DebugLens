@@ -116,9 +116,11 @@ Inspect and cancel jobs:
 ```bash
 python -m runner.job_queue list --limit 20
 python -m runner.job_queue cancel YOUR_JOB_ID
+python -m runner.job_queue dead-letter --limit 20
+python -m runner.job_queue replay YOUR_JOB_ID
 ```
 
-Set `DEBUGLENS_QUEUE_DATABASE` to choose a local queue database path. Reusing an idempotency key with the same payload returns the existing job; reusing it with a different payload is rejected. Running cancellation sends an interrupt to the orchestrator process group and escalates if necessary. A worker lease expires after seven minutes; another worker can recover a stale job, with at most two attempts. Use the queue only on a trusted host with Docker access. Review cancellation and container cleanup behavior in your own Docker runtime before production use.
+Set `DEBUGLENS_QUEUE_DATABASE` to choose a local queue database path. Reusing an idempotency key with the same payload returns the existing job; reusing it with a different payload is rejected. Running cancellation sends an interrupt to the orchestrator process group and escalates if necessary. A worker lease expires after seven minutes; another worker can recover a stale job, with at most two attempts. Exhausted infrastructure failures are marked as dead letters and can only be replayed through the explicit operator command. Use the queue only on a trusted host with Docker access. Review cancellation and container cleanup behavior in your own Docker runtime before production use.
 
 ## Important limitations
 
