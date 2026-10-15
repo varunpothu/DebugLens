@@ -8,17 +8,19 @@ from __future__ import annotations
 import re
 
 _REPLACEMENT = "[REDACTED]"
-_PATTERNS = [
-    re.compile(r"""(?ix)(\b(?:password|passwd|secret|api[_-]?key|access[_-]?token|refresh[_-]?token|client[_-]?secret|authorization)\b\s*["']?\s*[:=]\s*["']?)([^\s,"'\x60}]+)"""),
+_LABELED_SECRET = re.compile(
+    r"""(?ix)(\b(?:password|passwd|secret|api[_-]?key|access[_-]?token|refresh[_-]?token|client[_-]?secret|authorization)\b\s*["']?\s*[:=]\s*["']?)([^\s,"'\x60}]+)"""
+)
+_PATTERNS = (
     re.compile(r"(?i)\bBearer\s+[A-Za-z0-9._~+/=-]{8,}"),
     re.compile(r"\b(?:AKIA|ASIA)[A-Z0-9]{16}\b"),
     re.compile(r"\b(?:ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|glpat-[A-Za-z0-9_-]{20,})\b"),
     re.compile(r"\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b"),
     re.compile(r"(?i)-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----[\s\S]*?-----END (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----"),
     re.compile(r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", re.IGNORECASE),
-    re.compile(r"\b[A-CEGHJ-PR-TW-Z]\d{6}[A-D]\b", re.IGNORECASE),
+    re.compile(r"\b[A-CEGHJ-PR-TW-Z]{2}\d{6}[A-D]\b", re.IGNORECASE),
     re.compile(r"(?<!\d)(?:\d[ -]?){13,19}(?!\d)"),
-]
+)
 
 
 def redact_sensitive_text(value: str | None) -> str | None:
@@ -29,10 +31,10 @@ def redact_sensitive_text(value: str | None) -> str | None:
     """
     if value is None:
         return None
-    redacted = value
-    for index, pattern in enumerate(_PATTERNS):
-        if index == 0:
-            redacted = pattern.sub(lambda match: match.group(1) + _REPLACEMENT, redacted)
-        else:
-            redacted = pattern.sub(_REPLACEMENT, redacted)
+    redacted = _LABELED_SECRET.sub(
+        lambda match: match.group(1) + _REPLACEMENT,
+        value,
+    )
+    for pattern in _PATTERNS:
+        redacted = pattern.sub(_REPLACEMENT, redacted)
     return redacted
