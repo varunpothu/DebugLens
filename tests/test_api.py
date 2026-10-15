@@ -7,6 +7,7 @@ from io import BytesIO
 from fastapi.testclient import TestClient
 from PIL import Image
 
+from app import main
 from app.main import app
 
 client = TestClient(app)
@@ -321,3 +322,15 @@ def test_patch_suggestion_requires_configured_provider() -> None:
     )
     assert response.status_code == 503
     assert response.json()["detail"] == "Patch suggestion failed or the configured provider is unavailable."
+
+
+def test_api_blocks_external_screenshot_transfer_without_opt_in(monkeypatch) -> None:
+    monkeypatch.setattr(main.settings, "analysis_provider", "openai_compatible")
+    monkeypatch.setattr(main.settings, "allow_unredacted_screenshots", False)
+    response = client.post(
+        "/v1/analyses",
+        files={"screenshot": ("screen.png", png_bytes(), "image/png")},
+        data={"bug_report": "Synthetic test issue"},
+    )
+    assert response.status_code == 403
+    assert "ALLOW_UNREDACTED_SCREENSHOTS=true" in response.json()["detail"]

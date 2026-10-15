@@ -2,6 +2,7 @@ from io import BytesIO
 
 from PIL import Image
 
+from app.config import Settings
 from app.providers.base import ProviderResult
 from app.redaction import redact_sensitive_data, redact_sensitive_text
 from app.services import analyzer
@@ -56,6 +57,7 @@ def test_redacts_private_key_block() -> None:
 
 
 def test_provider_receives_redacted_text(monkeypatch) -> None:
+    monkeypatch.setattr(analyzer, "get_settings", lambda: Settings(allow_unredacted_screenshots=True))
     stream = BytesIO()
     Image.new("RGB", (8, 8), "white").save(stream, format="PNG")
     captured: dict[str, str | None] = {}

@@ -39,7 +39,7 @@ from app.run_store import (
 )
 from app.workflow import WorkflowState
 from app.browser.capture import UnsafeTargetError, capture_page
-from app.services.analyzer import InvalidImageError, analyse_screenshot
+from app.services.analyzer import InvalidImageError, ProviderConsentRequired, analyse_screenshot
 from app.patch_suggester import suggest_patch
 
 settings = get_settings()
@@ -147,6 +147,8 @@ async def create_analysis(
         return analyse_screenshot(raw, enriched_report, settings.analysis_provider)
     except InvalidImageError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except ProviderConsentRequired as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
     except RuntimeError as exc:
         logger.warning("Analysis provider unavailable: %s", exc)
         raise HTTPException(status_code=503, detail="Configured analysis provider is unavailable.") from exc
@@ -183,6 +185,8 @@ async def create_debug_run(
         analysis = analyse_screenshot(raw, enriched_report, settings.analysis_provider)
     except InvalidImageError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except ProviderConsentRequired as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
     except RuntimeError as exc:
         logger.warning("Analysis provider unavailable")
         raise HTTPException(status_code=503, detail="Configured analysis provider is unavailable.") from exc
@@ -282,6 +286,8 @@ async def collect_browser_evidence(
         )
     except InvalidImageError as exc:
         raise HTTPException(status_code=502, detail="Browser returned an invalid screenshot.") from exc
+    except ProviderConsentRequired as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
     except RuntimeError as exc:
         logger.warning("Browser screenshot analysis provider unavailable")
         raise HTTPException(status_code=503, detail="Configured analysis provider is unavailable.") from exc

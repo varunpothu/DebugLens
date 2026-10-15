@@ -22,6 +22,7 @@
 - [x] Deterministic evidence summary, hypothesis ranking, test-case proposal, and assurance blockers
 - [ ] Add a versioned, labelled screenshot benchmark with human-adjudicated ground truth
 - [x] Add deterministic pattern-based text redaction before external provider calls (not screenshot OCR or comprehensive DLP)
+- [x] Deny external vision-provider image transfer by default unless an operator explicitly opts in; this is a consent gate, not OCR/DLP.
 - [ ] Add OCR-assisted screenshot redaction, adversarial obfuscation tests, and independent privacy review
 - [ ] Add retry budgets, provider rate limits, token/cost telemetry, and prompt-version tracking
 

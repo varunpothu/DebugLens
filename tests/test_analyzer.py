@@ -3,7 +3,8 @@ from io import BytesIO
 import pytest
 from PIL import Image
 
-from app.services.analyzer import InvalidImageError, analyse_screenshot, inspect_image
+from app.config import Settings
+from app.services.analyzer import InvalidImageError, ProviderConsentRequired, analyse_screenshot, inspect_image
 
 
 def png_bytes() -> bytes:
@@ -44,3 +45,16 @@ def test_unsupported_gif_is_rejected() -> None:
     Image.new("RGB", (2, 2), "white").save(stream, format="GIF")
     with pytest.raises(InvalidImageError):
         inspect_image(stream.getvalue())
+
+
+def test_external_provider_requires_explicit_screenshot_transfer_opt_in(monkeypatch) -> None:
+    from app.services import analyzer
+
+    monkeypatch.setattr(analyzer, "get_settings", lambda: Settings(allow_unredacted_screenshots=False))
+    monkeypatch.setattr(
+        analyzer,
+        "_run_vision_provider",
+        lambda *args, **kwargs: pytest.fail("provider must not receive image bytes without explicit opt-in"),
+    )
+    with pytest.raises(ProviderConsentRequired, match="screenshot pixels are not currently redacted"):
+        analyse_screenshot(png_bytes(), "Test issue", provider="openai_compatible")
