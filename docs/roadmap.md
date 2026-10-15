@@ -43,7 +43,8 @@
 - [x] Add a standalone allowlisted test-worker with timeout, output cap, and workspace snapshot digest
 - [x] Add a host-side Docker orchestrator and HMAC-signed execution-result API
 - [x] Persist execution suite, exit code, workspace digest, duration, and bounded logs
-- [ ] Provision the exact reviewed patch into a disposable workspace automatically
+- [x] Provision a reviewed single-file text patch into a disposable copy with base/patch/workspace digests and manifest verification
+- [ ] Verify the supplied base revision against a trusted Git commit and clean working tree
 - [ ] Add queueing, cancellation, concurrency limits, and container cleanup monitoring
 - [x] Implement bounded provider-backed patch suggestion from user-supplied source context without automatic application
 - [ ] Add bounded LLM specialist agents for diagnosis and test planning
