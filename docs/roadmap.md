@@ -21,7 +21,7 @@
 - [x] Side-by-side model comparison harness for latency and output summaries
 - [x] Deterministic evidence summary, hypothesis ranking, test-case proposal, and assurance blockers
 - [ ] Add a versioned, labelled screenshot benchmark with human-adjudicated ground truth
-- [ ] Add privacy-preserving redaction before external provider calls
+- [x] Add deterministic pattern-based text redaction before external provider calls (not screenshot OCR or comprehensive DLP)\n- [ ] Add OCR-assisted screenshot redaction, adversarial obfuscation tests, and independent privacy review
 - [ ] Add retry budgets, provider rate limits, token/cost telemetry, and prompt-version tracking
 
 ## Phase 2: Browser evidence
