@@ -1,10 +1,12 @@
 import json
+import shutil
 import subprocess
 from hashlib import sha256
 from pathlib import Path
 
 import pytest
 
+from runner import provision as provision_module
 from runner.orchestrate import verify_manifest
 from runner.provision import ProvisionError, provision_workspace
 from runner.worker import workspace_digest
@@ -33,15 +35,24 @@ def prepare(tmp_path: Path) -> tuple[Path, Path]:
     (base / ".env.example").write_text("EXAMPLE=value\n", encoding="utf-8")
     patch = tmp_path / "reviewed.patch"
     patch.write_text(PATCH, encoding="utf-8")
-    subprocess.run(["git", "init", "-q", str(base)], check=True)
-    subprocess.run(["git", "-C", str(base), "config", "user.email", "debuglens-test@example.invalid"], check=True)
-    subprocess.run(["git", "-C", str(base), "config", "user.name", "DebugLens Tests"], check=True)
-    subprocess.run(["git", "-C", str(base), "add", "-A"], check=True)
-    subprocess.run(["git", "-C", str(base), "commit", "-qm", "test base snapshot"], check=True)
+    if shutil.which("git"):
+        subprocess.run(["git", "init", "-q", str(base)], check=True)
+        subprocess.run(["git", "-C", str(base), "config", "user.email", "debuglens-test@example.invalid"], check=True)
+        subprocess.run(["git", "-C", str(base), "config", "user.name", "DebugLens Tests"], check=True)
+        subprocess.run(["git", "-C", str(base), "add", "-A"], check=True)
+        subprocess.run(["git", "-C", str(base), "commit", "-qm", "test base snapshot"], check=True)
     return base, patch
 
 
+@pytest.fixture(autouse=True)
+def stub_git_verification_when_git_is_unavailable(monkeypatch: pytest.MonkeyPatch) -> None:
+    if shutil.which("git") is None:
+        monkeypatch.setattr(provision_module, "verify_git_base", lambda source, expected: expected)
+
+
 def revision(base: Path) -> str:
+    if not shutil.which("git"):
+        return "a" * 40
     return subprocess.run(
         ["git", "-C", str(base), "rev-parse", "HEAD"],
         check=True,
@@ -70,7 +81,7 @@ def test_provision_creates_exact_patched_copy_without_mutating_base(tmp_path: Pa
 
 
 
-def test_provision_requires_matching_clean_git_revision(tmp_path: Path) -> None:
+@pytest.mark.skipif(shutil.which("git") is None, reason="Git is not installed in the restricted worker image")\ndef test_provision_requires_matching_clean_git_revision(tmp_path: Path) -> None:
     base, patch = prepare(tmp_path)
     with pytest.raises(ProvisionError, match="does not match"):
         provision_workspace(
@@ -89,7 +100,6 @@ def test_provision_requires_matching_clean_git_revision(tmp_path: Path) -> None:
             output_workspace=tmp_path / "dirty-worktree",
             base_revision=revision(base),
         )
-
 
 def test_provision_rejects_context_mismatch_and_cleans_output(tmp_path: Path) -> None:
     base, patch = prepare(tmp_path)
@@ -132,8 +142,9 @@ def test_provision_rejects_path_traversal_and_symlinks(tmp_path: Path) -> None:
         )
     link = base / "linked.txt"
     link.symlink_to(base / "app.css")
-    subprocess.run(["git", "-C", str(base), "add", "linked.txt"], check=True)
-    subprocess.run(["git", "-C", str(base), "commit", "-qm", "add symlink fixture"], check=True)
+    if shutil.which("git"):
+        subprocess.run(["git", "-C", str(base), "add", "linked.txt"], check=True)
+        subprocess.run(["git", "-C", str(base), "commit", "-qm", "add symlink fixture"], check=True)
     with pytest.raises(ProvisionError, match="symlinks"):
         provision_workspace(
             base_workspace=base,
