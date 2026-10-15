@@ -300,10 +300,11 @@ def finish_job(job_id: str, worker_id: str, *, exit_code: int, output: str) -> d
             status = "queued"
         else:
             status = "failed"
+        dead_letter = int(not row["cancel_requested"] and exit_code == 2 and row["attempts"] >= row["max_attempts"])
         db.execute(
             """UPDATE execution_jobs SET status=?,updated_at=?,worker_id=NULL,lease_until=NULL,
-               exit_code=?,output=? WHERE job_id=?""",
-            (status, now, exit_code, output[:OUTPUT_LIMIT], job_id),
+               exit_code=?,output=?,dead_letter=MAX(dead_letter,?) WHERE job_id=?""",
+            (status, now, exit_code, output[:OUTPUT_LIMIT], dead_letter, job_id),
         )
         db.commit()
     return get_job(job_id)
