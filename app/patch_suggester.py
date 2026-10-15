@@ -71,6 +71,10 @@ def _parse_suggestion(raw_text: str, target_file: str, provider: str, model: str
         expected_header = f"diff --git a/{target_file} b/{target_file}"
         if len(file_headers) != 1 or file_headers[0] != expected_header:
             raise ValueError("Patch must modify only the requested target file.")
+        if len(old_paths) != 1 or len(new_paths) != 1:
+            raise ValueError("Patch must contain exactly one old-file and new-file header.")
+        if old_paths[0] != f"a/{target_file}" or new_paths[0] != f"b/{target_file}":
+            raise ValueError("Patch file headers do not match the requested target.")
     elif old_paths and new_paths:
         if len(old_paths) != 1 or len(new_paths) != 1:
             raise ValueError("Patch must modify only the requested target file.")
