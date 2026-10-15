@@ -289,6 +289,7 @@ async def collect_browser_evidence(
         "viewport_width": capture.viewport_width,
         "viewport_height": capture.viewport_height,
         "dom_tag_counts": capture.dom_tag_counts,
+        "dom_count_truncated": capture.dom_count_truncated,
         "console_error_types": capture.console_errors,
         "page_error_types": capture.page_errors,
         "failed_request_count": capture.failed_request_count,
