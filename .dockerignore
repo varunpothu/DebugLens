@@ -1,0 +1,47 @@
+# Version-control metadata
+.git
+.github
+
+# Local secrets and environment files
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Python environments, caches, and test outputs
+.venv
+venv
+__pycache__
+*.py[cod]
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.coverage
+htmlcov
+
+# Local databases, uploads, screenshots, and logs
+data
+*.db
+*.sqlite
+*.sqlite3
+*.log
+*.har
+*.png
+*.jpg
+*.jpeg
+*.webp
+
+# Build artefacts and unrelated frontend dependencies
+build
+dist
+*.egg-info
+node_modules
+
+# Terraform state and local provider data
+**/.terraform
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log
