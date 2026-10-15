@@ -36,6 +36,13 @@ def validate_target_url(url: str, allowed_hosts: set[str]) -> str:
         raise UnsafeTargetError("Target must be an absolute HTTP or HTTPS URL.")
     if parsed.username or parsed.password:
         raise UnsafeTargetError("Credentials in target URLs are not permitted.")
+    try:
+        port = parsed.port
+    except ValueError as exc:
+        raise UnsafeTargetError("Target URL contains an invalid port.") from exc
+    expected_port = 443 if parsed.scheme == "https" else 80
+    if port is not None and port != expected_port:
+        raise UnsafeTargetError("Only the default HTTP and HTTPS ports are permitted.")
     hostname = parsed.hostname.rstrip(".").lower()
     try:
         address = ipaddress.ip_address(hostname)
