@@ -32,3 +32,14 @@ variable "tags" {
     ManagedBy   = "Terraform"
   }
 }
+
+
+variable "environment_name" {
+  description = "Short environment label used to keep IAM role names distinct across environments."
+  type        = string
+  default     = "development"
+  validation {
+    condition     = can(regex("^[a-z0-9-]{1,20}$", var.environment_name))
+    error_message = "Environment name must be 1–20 lowercase letters, digits, or hyphens."
+  }
+}
