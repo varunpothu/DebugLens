@@ -6,6 +6,7 @@ Source context is sent to the configured external provider when a real provider 
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from pathlib import PurePosixPath
 from typing import Any
@@ -43,9 +44,10 @@ def validate_target_file(target_file: str) -> str:
         not candidate
         or candidate.startswith("/")
         or ":" in candidate
-        or ".." in path.parts
-        or candidate in {".", ".."}
-        or any(part.startswith(".git") for part in path.parts)
+        or any(ord(char) < 32 or ord(char) == 127 for char in candidate)
+        or not re.fullmatch(r"[A-Za-z0-9_./+-]+", candidate)
+        or any(part in {"", ".", ".."} for part in path.parts)
+        or any(part.lower().startswith(".git") for part in path.parts)
     ):
         raise ValueError("Target file must be a safe repository-relative path.")
     return path.as_posix()
@@ -70,15 +72,21 @@ def _parse_suggestion(raw_text: str, target_file: str, provider: str, model: str
     if risk not in {"low", "medium", "high", "critical"}:
         raise ValueError("Patch response has an invalid risk value.")
     diff_lines = patch_diff.splitlines()
+    if any(
+        line.startswith(("rename from ", "rename to ", "copy from ", "copy to ",
+                         "GIT binary patch", "Binary files "))
+        for line in diff_lines
+    ):
+        raise ValueError("Patch must be a text-only modification, not a rename, copy, or binary diff.")
     file_headers = [line for line in diff_lines if line.startswith("diff --git ")]
     old_paths = [line[4:] for line in diff_lines if line.startswith("--- ")]
     new_paths = [line[4:] for line in diff_lines if line.startswith("+++ ")]
+    if len(old_paths) != 1 or len(new_paths) != 1:
+        raise ValueError("Patch must contain exactly one old-file and new-file header.")
     if file_headers:
         expected_header = f"diff --git a/{target_file} b/{target_file}"
         if len(file_headers) != 1 or file_headers[0] != expected_header:
             raise ValueError("Patch must modify only the requested target file.")
-        if len(old_paths) != 1 or len(new_paths) != 1:
-            raise ValueError("Patch must contain exactly one old-file and new-file header.")
         if old_paths[0] != f"a/{target_file}" or new_paths[0] != f"b/{target_file}":
             raise ValueError("Patch file headers do not match the requested target.")
     elif old_paths and new_paths:
