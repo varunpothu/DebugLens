@@ -2,9 +2,9 @@
 
 **Multimodal screenshot debugging, evidence-driven diagnosis, and verified UI repair.**
 
-DebugLens turns a UI failure report into a traceable investigation. It validates screenshots, records evidence metadata, optionally calls a vision-capable model, returns structured findings, and makes clear what remains unverified. The long-term workflow correlates screenshots with browser/runtime evidence, proposes regression tests, and prepares fixes for human review.
+DebugLens turns a UI failure report into a traceable investigation. It validates screenshots, records evidence metadata, optionally calls a vision-capable model, returns structured findings, and makes clear what remains unverified. The longer-term workflow correlates screenshots with browser/runtime evidence, proposes regression tests, and prepares fixes for human review.
 
-> **Current maturity:** working foundation with a deterministic mock provider, opt-in OpenAI-compatible vision adapter, typed evidence contracts, API tests, a workflow state machine, and CI configuration. Browser execution, automated patching, AWS deployment, and production-grade multi-agent orchestration remain roadmap items. This is not yet a production-ready autonomous debugger.
+> **Current maturity:** working foundation with a deterministic mock provider, opt-in OpenAI-compatible, Anthropic, and Gemini vision adapters, typed evidence contracts, API tests, an auditable workflow state machine, and CI. Browser execution, automated patching, cloud deployment, and production-grade multi-agent orchestration remain roadmap items. This is not yet a production-ready autonomous debugger.
 
 ## Product principles
 
@@ -27,25 +27,25 @@ FastAPI ingress -> validation, upload limits, correlation ID
 Image validation -> format, dimensions, SHA-256
         |
         v
-Explicit provider router
-   |                  |
-   v                  v
-Mock baseline     Vision-capable model adapter
-   |                  |
-   +---------+--------+
-             v
+Explicit provider selection
+   |          |           |
+   v          v           v
+Mock       OpenAI      Anthropic / Gemini
+   |          |           |
+   +----------+-----------+
+              v
 Typed findings + evidence + limitations + test plan
-             |
-             v
+              |
+              v
 Planned: browser evidence -> agent workflow -> human approval
-             |
-             v
+              |
+              v
 Planned: sandboxed tests -> proposed patch -> human verification
 ~~~
 
 ## Repository layout
 
-- app/: FastAPI API, typed contracts, provider adapter/router, workflow state machine.
+- app/: FastAPI API, typed contracts, multimodal adapters, and workflow state machine.
 - tests/: API, image validation, and workflow transition tests.
 - frontend/: optional Streamlit upload client.
 - docs/: architecture, agent workflow, threat model, evaluation, operations, roadmap.
@@ -81,19 +81,36 @@ Run the UI in a second terminal:
 streamlit run frontend/streamlit_app.py
 ~~~
 
-## Configure multimodal vision
+## Configure a vision model
 
-The default mode is mock and does not interpret pixels. To enable the opt-in OpenAI-compatible adapter, configure your own credentials in the local .env file:
+The default mode is mock and does not interpret pixels. Choose exactly one provider in .env and set its credential. Never commit .env or paste keys into issues.
+
+OpenAI or an OpenAI Chat Completions-compatible endpoint:
 
 ~~~dotenv
 ANALYSIS_PROVIDER=openai_compatible
 VISION_API_KEY=your_key_here
 VISION_MODEL=gpt-4.1-mini
 VISION_BASE_URL=https://api.openai.com/v1
-VISION_TIMEOUT_SECONDS=45
 ~~~
 
-Use a model that supports image input and JSON-object responses at the configured endpoint. Never commit .env or paste keys into issues. The adapter sends the screenshot and bug report to the configured provider. Before using real or customer data, review provider privacy, retention, region, access, cost, and contractual terms. The project does not currently redact image contents automatically.
+Anthropic:
+
+~~~dotenv
+ANALYSIS_PROVIDER=anthropic
+ANTHROPIC_API_KEY=your_key_here
+ANTHROPIC_MODEL=claude-3-5-sonnet-latest
+~~~
+
+Google Gemini:
+
+~~~dotenv
+ANALYSIS_PROVIDER=gemini
+GEMINI_API_KEY=your_key_here
+GEMINI_MODEL=gemini-2.5-flash
+~~~
+
+Use a model that supports image input and the required JSON response behaviour. Model names and availability can change, so confirm them with the provider. Before using real or customer data, review provider privacy, retention, region, access, cost, and contractual terms. The project does not currently redact image contents automatically.
 
 ## API
 
@@ -126,8 +143,8 @@ The workflow module models legal transitions from RECEIVED through evidence coll
 
 ## Roadmap
 
-1. Foundation: API, mock provider, vision adapter, evidence contracts, workflow state machine, tests and CI.
-2. Multi-model evaluation: provider-specific adapters, structured output validation, benchmark suite, model comparison and calibration.
+1. Foundation: API, mock provider, three vision adapters, evidence contracts, workflow state machine, tests and CI.
+2. Multi-model evaluation: provider-specific contract tests, benchmark suite, model comparison and confidence calibration.
 3. Browser evidence: Playwright capture of screenshots, DOM, console and network signals in a sandbox.
 4. Agent orchestration: bounded specialist tasks, durable state, retries, timeouts, budgets and approval gates.
 5. Verification: visual regression, accessibility checks, test generation, patch diff review and isolated execution.
