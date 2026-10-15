@@ -21,7 +21,10 @@ DebugLens turns a UI failure report into a traceable investigation. It validates
 Screenshot + bug report
         |
         v
-FastAPI ingress -> validation, upload limits, correlation ID\n        |\n        v\nSQLite run store -> workflow state + audit trail
+FastAPI ingress -> validation, upload limits, correlation ID
+        |
+        v
+SQLite run store -> workflow state + audit trail
         |
         v
 Image validation -> format, dimensions, SHA-256
