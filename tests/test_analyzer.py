@@ -1,7 +1,7 @@
 from io import BytesIO
 
-from PIL import Image
 import pytest
+from PIL import Image
 
 from app.services.analyzer import InvalidImageError, analyse_screenshot, inspect_image
 
@@ -12,11 +12,12 @@ def png_bytes() -> bytes:
     return stream.getvalue()
 
 
-def test_inspect_image_returns_digest_and_dimensions() -> None:
-    digest, width, height = inspect_image(png_bytes())
+def test_inspect_image_returns_digest_dimensions_and_mime() -> None:
+    digest, width, height, media_type = inspect_image(png_bytes())
     assert len(digest) == 64
     assert width == 32
     assert height == 24
+    assert media_type == "image/png"
 
 
 def test_mock_analysis_is_explicit_about_limitations() -> None:
