@@ -19,6 +19,7 @@
 - [x] Structured output validation and safe provider failure handling
 - [x] Mocked HTTP contract tests for each provider
 - [x] Side-by-side model comparison harness for latency and output summaries
+- [x] Deterministic evidence summary, hypothesis ranking, test-case proposal, and assurance blockers
 - [ ] Add a versioned, labelled screenshot benchmark with human-adjudicated ground truth
 - [ ] Add privacy-preserving redaction before external provider calls
 - [ ] Add retry budgets, provider rate limits, token/cost telemetry, and prompt-version tracking
@@ -32,23 +33,26 @@
 - [ ] Run in a disposable container with network egress controls and DNS/SSRF protection
 - [ ] Add resource quotas, cancellation, job timeouts, artifact expiry, and reproduction metadata
 
-## Phase 3: Agentic workflow
+## Phase 3: Human-governed repair workflow
 
 - [x] Explicit workflow state machine and audit events
 - [x] Human review dashboard for run history and legal transitions
-- [x] Documented specialist-agent responsibilities and approval gates
-- [ ] Implement bounded perception, evidence correlation, diagnosis, test planning, and verification tasks
+- [x] Human-authored patch proposals with digest, rationale, risk, and rollback plan
+- [x] Test-result records tied to the exact patch digest
+- [x] Gate verification on a passing report for the current patch digest
+- [ ] Implement isolated test execution and independently captured test logs
+- [ ] Implement patch generation from source context without automatic application
+- [ ] Add bounded LLM specialist agents for diagnosis and test planning
 - [ ] Add durable orchestration, idempotency, retries, timeout handling, cancellation, and dead-letter queue
 - [ ] Enforce tool permissions and human approval in code, not only in prompts
 - [ ] Add prompt-injection and tool-boundary red-team tests
 
-## Phase 4: Verification and proposed repair
+## Phase 4: Verification and repair
 
 - [ ] Screenshot baseline comparison and perceptual metrics
 - [ ] Accessibility checks and cross-viewport test matrix
-- [ ] Generate patch diffs only, with patch digest and rationale
 - [ ] Run tests in an isolated worker with no secrets and restricted egress
-- [ ] Require green checks and explicit human approval before repository changes
+- [ ] Require green machine-captured checks and explicit human approval before repository changes
 - [ ] Add rollback and regression verification
 
 ## Phase 5: Production operations and AWS
