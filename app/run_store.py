@@ -8,6 +8,7 @@ import json
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
+from uuid import uuid4
 from typing import Any
 
 from app.config import get_settings
@@ -176,7 +177,7 @@ def attach_browser_evidence(
         now = datetime.now(timezone.utc).isoformat()
         events.append({
             "event_type": "browser_evidence_attached",
-            "event_id": __import__("uuid").uuid4().hex,
+            "event_id": str(uuid4()),
             "workflow_id": workflow_id,
             "from_state": record["state"],
             "to_state": record["state"],
