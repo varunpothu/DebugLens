@@ -274,17 +274,21 @@ def create_patch_proposal(
             raise KeyError(workflow_id)
         record = _decode_row(row)
         current = WorkflowState(record["state"])
-        if current != WorkflowState.REPRODUCED:
+        if current not in {WorkflowState.REPRODUCED, WorkflowState.PATCH_PROPOSED}:
             db.rollback()
-            raise ValueError("A patch proposal is only allowed after the issue has been reproduced.")
-        workflow = DebugWorkflow(workflow_id=workflow_id, state=current)
-        event = workflow.transition(
-            WorkflowState.PATCH_PROPOSED,
-            actor=actor,
-            reason=f"Patch proposal {patch_digest} created for human review.",
-        )
+            raise ValueError("A patch proposal is only allowed after reproduction or during patch revision.")
         events = record["events"]
-        events.append(_event_dict(event))
+        if current == WorkflowState.REPRODUCED:
+            workflow = DebugWorkflow(workflow_id=workflow_id, state=current)
+            event = workflow.transition(
+                WorkflowState.PATCH_PROPOSED,
+                actor=actor,
+                reason=f"Patch proposal {patch_digest} created for human review.",
+            )
+            events.append(_event_dict(event))
+            next_state = WorkflowState.PATCH_PROPOSED
+        else:
+            next_state = current
         events.append({
             "event_type": "patch_proposal_created",
             "event_id": proposal_id,
@@ -304,7 +308,7 @@ def create_patch_proposal(
         )
         db.execute(
             "UPDATE debug_runs SET state = ?, updated_at = ?, events_json = ? WHERE workflow_id = ?",
-            (WorkflowState.PATCH_PROPOSED.value, now, json.dumps(events, separators=(",", ":")), workflow_id),
+            (next_state.value, now, json.dumps(events, separators=(",", ":")), workflow_id),
         )
         db.commit()
     return get_run(workflow_id)
