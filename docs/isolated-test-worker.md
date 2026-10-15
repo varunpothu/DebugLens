@@ -43,4 +43,4 @@ Run `ruff` or `mypy` by changing only `DEBUGLENS_TEST_SUITE`. Do not mount the D
 - The workspace must be created and reviewed by a trusted orchestrator; the worker does not apply a patch or verify that a supplied patch digest matches a diff.
 - The worker's output is evidence, not approval. Human review and explicit approval remain required.
 - API integration still needs authenticated job submission, one-time workspace provisioning, queueing/cancellation, result signature or trusted transport, persistence of suite and workspace digest, and a gate that rejects stale evidence whenever the patch or workspace changes.
-- The current subprocess captures output in memory before truncation. The container memory limit is therefore part of the safety boundary; a future hardening pass should stream output to a bounded file or pipe.
+- Output is redirected to a temporary file inside the container and only the first 20,001 bytes are read into memory. The container's tmpfs size and memory limit remain important safety boundaries.
