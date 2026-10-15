@@ -81,6 +81,7 @@
 ## Phase 5: Production operations and AWS
 
 - [x] Private encrypted S3 artifact-storage Terraform baseline with KMS, public-access blocking, TLS-only policy, and lifecycle expiry
+- [x] Separate least-privilege API/worker ECS task-role policies scoped to S3 prefixes and KMS encryption context (roles are not attached to compute yet)
 - [ ] OpenTelemetry traces and redacted structured logs
 - [ ] SLOs, dashboards, alerts, quotas, provider budgets, and cost attribution
 - [ ] ECS/Fargate, SQS, Step Functions approval callbacks, Secrets Manager, and CloudWatch alarms
