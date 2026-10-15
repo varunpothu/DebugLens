@@ -80,7 +80,7 @@ ruff check .
 mypy app
 ~~~
 
-The browser extra installs Playwright; the second command downloads Chromium for local testing. Browser capture is a library component and is not exposed as an API endpoint yet.
+The browser extra installs Playwright; the second command downloads Chromium for local testing. The optional browser-evidence API is disabled by default and should only be enabled against allow-listed test targets in an isolated environment.
 
 Run the UI in a second terminal:
 
