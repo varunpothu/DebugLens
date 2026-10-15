@@ -205,3 +205,14 @@ def test_browser_evidence_endpoint_is_disabled_by_default() -> None:
         },
     )
     assert response.status_code == 404
+
+
+
+def test_configured_bearer_token_protects_api_routes(monkeypatch) -> None:
+    monkeypatch.setattr("app.main.settings.api_access_token", "test-token")
+    denied = client.get("/v1/debug-runs")
+    assert denied.status_code == 401
+    allowed = client.get("/v1/debug-runs", headers={"Authorization": "Bearer test-token"})
+    assert allowed.status_code == 200
+    health = client.get("/health")
+    assert health.status_code == 200
