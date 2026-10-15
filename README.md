@@ -53,6 +53,7 @@ Planned: sandboxed tests -> proposed patch -> human verification
 - frontend/: optional Streamlit upload client.
 - docs/: architecture, agent workflow, threat model, evaluation, operations, roadmap.
 - .github/workflows/: CI quality gates.
+- examples/demo-ui/: intentionally broken and fixed synthetic storefront for reproducible demos.
 - Dockerfile and docker-compose.yml: local container setup.
 
 ## Quick start (Windows / PowerShell)
@@ -145,6 +146,16 @@ The response includes a SHA-256 digest, dimensions, findings, evidence, confiden
 The SQLite database defaults to `./data/debuglens.db`; override it with `DATABASE_PATH`. The Compose file mounts a writable volume at `/data`. Only screenshot digests and analysis results are retained by the run store, not uploaded screenshot bytes. Patch proposals are stored as text and bound to a SHA-256 digest. Test results are reviewer-reported and are not executed by the application. Verification requires a passing result for the current patch digest. The optional browser endpoint is disabled by default. Set `BROWSER_ENABLED=true` and an exact `BROWSER_ALLOWED_HOSTS` list only in an isolated test environment with network egress controls.
 
 **Security limitation:** a configurable bearer token is available, and startup refuses production mode without one. This is only a basic shared-token gate, not user identity, role-based authorisation, rate limiting or tenant isolation. Keep the API behind a trusted boundary and do not expose it publicly or process confidential data.
+
+## Reproducible demo fixture
+
+The repository includes a synthetic storefront with intentional mobile overflow and low-contrast text. Run it locally with:
+
+~~~powershell
+py -m http.server 8081 --directory examples/demo-ui
+~~~
+
+Compare http://localhost:8081/ with http://localhost:8081/?fixed=1 at a 390 x 844 viewport. See examples/demo-ui/README.md for a suggested issue report and safe local browser-capture setup.
 
 ## Compare models
 
