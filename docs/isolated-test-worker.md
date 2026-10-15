@@ -2,7 +2,7 @@
 
 ## Status
 
-The repository now contains a standalone, fixed-suite worker (`runner/worker.py`) and a minimal image definition (`runner/Dockerfile`). It is **not wired to the API** and must not be described as production-ready. The existing `/test-results` endpoint remains a reviewer-reported result, not independently verified execution.
+The repository contains a fixed-suite worker (`runner/worker.py`), a minimal image (`runner/Dockerfile`), and a host-side Docker orchestrator (`runner/orchestrate.py`). The orchestrator submits HMAC-signed results to `/v1/debug-runs/{workflow_id}/execution-results`. The worker itself receives no signing secret. This is a local prototype, not production-ready multi-tenant execution. The existing `/test-results` endpoint remains a reviewer-reported result.
 
 ## Allowed suites
 
@@ -37,10 +37,29 @@ docker run --rm \
 
 Run `ruff` or `mypy` by changing only `DEBUGLENS_TEST_SUITE`. Do not mount the Docker socket, credentials, the host home directory, or writable host paths. Do not run untrusted source outside this container profile. The image contains test tools and dependencies installed at build time; the mounted workspace supplies the code under test. Network access is intentionally disabled, so tests requiring external services should use local fixtures.
 
+## Submit a result to the API
+
+Configure the API with a separate signing secret (at least 32 characters) using `EXECUTION_SIGNING_SECRET`. On the trusted host, set the same value as `DEBUGLENS_EXECUTION_SIGNING_SECRET`; optionally set `DEBUGLENS_API_ACCESS_TOKEN` if API bearer-token protection is enabled. Never pass the signing secret as a Docker `-e` argument or mount it into the worker.
+
+Build the image, prepare a reviewed workspace snapshot, then run the orchestrator from the repository root:
+
+```bash
+docker build -f runner/Dockerfile -t debuglens-test-worker:local .
+python -m runner.orchestrate \
+  --workspace ./reviewed-workspace \
+  --suite pytest \
+  --workflow-id YOUR_WORKFLOW_ID \
+  --patch-sha256 YOUR_CURRENT_PATCH_SHA256 \
+  --actor local-reviewer \
+  --api-url http://127.0.0.1:8000
+```
+
+The orchestrator checks the worker exit status, adds the current patch digest, signs the canonical payload, and submits it to the API. It returns a non-zero exit code when the suite fails or submission is rejected. The operator is responsible for ensuring the mounted workspace is the exact reviewed source state corresponding to the patch digest; the prototype does not apply or independently reconstruct a patch.
+
 ## Important limitations
 
 - The worker container is a sandbox boundary only when launched with the restrictions above. Running `runner/worker.py` directly on a host is not isolated.
 - The workspace must be created and reviewed by a trusted orchestrator; the worker does not apply a patch or verify that a supplied patch digest matches a diff.
 - The worker's output is evidence, not approval. Human review and explicit approval remain required.
-- API integration still needs authenticated job submission, one-time workspace provisioning, queueing/cancellation, result signature or trusted transport, persistence of suite and workspace digest, and a gate that rejects stale evidence whenever the patch or workspace changes.
+- Remaining integration work includes trusted workspace provisioning from the reviewed patch, authenticated job submission, queueing/cancellation, container lifecycle management, and production security review. The API persists the suite and workspace digest and rejects verification when the latest trusted execution report does not match the current patch digest.
 - Output is redirected to a temporary file inside the container and only the first 20,001 bytes are read into memory. The container's tmpfs size and memory limit remain important safety boundaries.
