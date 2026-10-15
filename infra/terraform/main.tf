@@ -122,7 +122,7 @@ locals {
 
   s3_kms_conditions = {
     StringEquals = {
-      "kms:ViaService"                    = "s3.${var.aws_region}.amazonaws.com"
+      "kms:ViaService"                   = "s3.${var.aws_region}.amazonaws.com"
       "kms:EncryptionContext:aws:s3:arn" = aws_s3_bucket.artifacts.arn
     }
   }
