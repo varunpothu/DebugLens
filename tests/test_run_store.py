@@ -59,7 +59,7 @@ def test_list_runs_returns_newest_first_and_respects_limit() -> None:
 
 def test_transition_requires_legal_state_and_audit_reason() -> None:
     run = create_run(bug_report=None, screenshot_sha256="a" * 64, analysis=sample_analysis())
-    with pytest.raises(ValueError, match="Verification requires a proposed patch"):
+    with pytest.raises(ValueError, match="Illegal workflow transition"):
         transition_run(
             run["workflow_id"],
             target=WorkflowState.RECEIVED,
