@@ -54,7 +54,7 @@ def api_post(path: str, **kwargs) -> dict:
     return response.json()
 
 
-new_tab, history_tab, review_tab = st.tabs(["New investigation", "Run history", "Human review"])
+new_tab, history_tab, review_tab, ensemble_tab = st.tabs(["New investigation", "Run history", "Human review", "Multi-model ensemble"])
 
 with new_tab:
     st.subheader("Create an investigation")
@@ -310,3 +310,80 @@ with review_tab:
                         st.error(f"Transition was not recorded: {exc}")
         else:
             st.info("This run is in a terminal state. No further transitions are allowed.")
+
+
+
+with ensemble_tab:
+    st.subheader("Compare vision models")
+    st.caption("Runs each selected provider explicitly. Agreement is not ground truth, and minority findings are retained.")
+    st.warning(
+        "A real vision provider may receive screenshot pixels. The API blocks this by default unless the operator "
+        "has explicitly enabled external image transfer after a privacy review. Use synthetic or redacted images."
+    )
+    with st.form("ensemble_analysis_form"):
+        ensemble_image = st.file_uploader(
+            "Screenshot for model comparison",
+            type=["png", "jpg", "jpeg", "webp"],
+            key="ensemble_screenshot",
+        )
+        ensemble_report = st.text_area(
+            "Bug report for every model",
+            max_chars=4000,
+            key="ensemble_bug_report",
+            placeholder="Describe the same expected and actual behaviour for all selected models.",
+        )
+        ensemble_providers = st.multiselect(
+            "Providers to compare",
+            options=["mock", "openai_compatible", "anthropic", "gemini"],
+            default=["mock"],
+            help="Use two or more configured providers for a comparison. Each real provider may incur cost.",
+        )
+        ensemble_submitted = st.form_submit_button(
+            "Compare selected models",
+            type="primary",
+            disabled=ensemble_image is None or not ensemble_providers,
+        )
+
+    if ensemble_submitted and ensemble_image is not None:
+        files = {
+            "screenshot": (
+                ensemble_image.name,
+                ensemble_image.getvalue(),
+                ensemble_image.type or "image/png",
+            )
+        }
+        data = {
+            "bug_report": ensemble_report,
+            "providers": ",".join(ensemble_providers),
+        }
+        try:
+            with st.spinner("Running selected providers and comparing findings..."):
+                report = api_post("/v1/ensemble-analyses", data=data, files=files)
+            st.metric("Providers completed", report["providers_completed"])
+            st.metric("Providers failed", report["providers_failed"])
+            st.metric("Uncorroborated finding clusters", report["unresolved_disagreement_count"])
+            if report["providers_failed"]:
+                st.warning("At least one provider failed. A failure is not evidence that the screenshot has no defects.")
+            st.subheader("Finding clusters")
+            if report["finding_clusters"]:
+                for cluster in report["finding_clusters"]:
+                    with st.expander(
+                        f"{cluster['cluster_id']} · {cluster['agreement_label']} · "
+                        f"{cluster['supporting_provider_count']} provider(s)"
+                    ):
+                        st.json(cluster)
+            else:
+                st.info("No findings were returned. Check provider status and remember that absence of findings is not proof of a clean UI.")
+            st.subheader("Per-provider results")
+            st.json(report["provider_runs"])
+            st.subheader("Assurance and limitations")
+            st.json(report["assurance"])
+            st.write(report["limitations"])
+            st.download_button(
+                "Download ensemble report",
+                json.dumps(report, indent=2),
+                file_name="debuglens-ensemble-report.json",
+                mime="application/json",
+            )
+        except (requests.RequestException, RuntimeError) as exc:
+            st.error(f"Ensemble analysis failed: {exc}")
