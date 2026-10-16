@@ -37,3 +37,12 @@ Do not evaluate the system using a handful of attractive demos. Maintain a versi
 - No generated code is executed or merged.
 - Tests cover successful requests, malformed data, unsupported MIME types, and provider-unavailable behaviour.
 - Real model integrations must pass schema validation, prompt-injection tests, and task-specific benchmark gates before becoming the default.
+
+
+## Current implementation
+
+The repository includes a benchmark runner at app/benchmark.py. It validates a versioned JSON manifest, rejects unsafe fixture paths, and reports category-level precision, recall, F1, and macro F1. It refuses mock mode because mock results cannot measure visual defect detection. See docs/benchmarking.md for the manifest schema and command.
+
+The multi-model ensemble endpoint preserves original per-provider findings and uses heuristic clusters to indicate possible corroboration. This signal is evaluated separately from correctness; model agreement is not ground truth. See docs/multi-model-ensemble.md.
+
+The repository does not yet include a sufficiently representative, independently labelled dataset or a calibrated confidence study. Therefore no claim of production diagnostic accuracy should be made until those evaluation artefacts exist and have been reviewed.
