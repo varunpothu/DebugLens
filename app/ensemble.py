@@ -12,7 +12,7 @@ from difflib import SequenceMatcher
 from time import perf_counter
 from typing import Any
 
-from app.services.analyzer import analyse_screenshot
+from app.services.analyzer import ProviderConsentRequired, analyse_screenshot
 
 
 @dataclass(frozen=True, slots=True)
@@ -66,6 +66,17 @@ def compare_ensemble(
                     latency_ms=round((perf_counter() - started) * 1000, 2),
                     model_version=response.provider_version,
                     findings=[item.model_dump(mode="json") for item in response.findings],
+                )
+            )
+        except ProviderConsentRequired:
+            runs.append(
+                ProviderRun(
+                    provider=provider,
+                    status="failed",
+                    latency_ms=round((perf_counter() - started) * 1000, 2),
+                    model_version=None,
+                    findings=[],
+                    error_code="provider_consent_required",
                 )
             )
         except Exception as exc:
