@@ -11,13 +11,13 @@
 ## Components
 
 - **API ingress:** validates content type, upload size, context shape, and returns a correlation ID.
-- **Evidence normaliser:** validates image bytes, computes a content digest and records dimensions. Automatic PII redaction is not implemented yet.
+- **Evidence normaliser:** validates image bytes, computes a content digest and records dimensions. Common sensitive text patterns in bug reports are redacted before provider calls; OCR-assisted screenshot redaction and comprehensive DLP are not implemented.
 - **Analysis orchestrator:** calls the explicitly configured provider and returns typed findings, test suggestions, and limitations. It does not infer runtime facts from screenshots alone.
 - **Vision adapters:** OpenAI-compatible, Anthropic, and Gemini adapters behind a shared provider contract.
 - **Local run store:** SQLite persistence for analysis output, workflow state, and actor-attributed audit events. Use PostgreSQL and schema migrations for multi-user production.
 - **Browser evidence collector:** optional Playwright capture behind a disabled-by-default endpoint. It captures screenshot analysis, page title, viewport, tag counts, console error types, page error classes, and failed-request counts. Exact hostname allow-listing is necessary but not sufficient without network egress controls.
-- **Model comparison harness:** records provider output summaries and latency. Correctness requires a labelled benchmark and human adjudication.
-- **Streamlit dashboard:** create investigations, browse history, inspect findings, and record legal workflow transitions.
+- **Model comparison and ensemble:** records provider output summaries and latency, clusters similar findings heuristically, preserves minority findings, and distinguishes provider failures from no findings. A labelled benchmark runner reports category precision/recall/F1, but a representative independently labelled dataset and human adjudication are still required for correctness claims.
+- **Streamlit dashboard:** create investigations, browse history, inspect findings, record legal workflow transitions, and compare explicitly selected vision providers.
 - **Repair proposer:** emits a bounded single-file diff, rationale, risk rating, and rollback plan. It never applies or commits the diff.
 - **Isolated test verifier:** a host-side orchestrator runs allow-listed suites in a network-disabled, read-only Docker container with resource limits. A Git-verified provisioner applies a strict single-file patch to a disposable copy. The local SQLite queue adds idempotency, leases, cancellation, bounded infrastructure retries, and dead-letter replay. Signed HMAC execution results are tied to the current patch digest; visual regression metrics are available as a local utility.
 
