@@ -16,6 +16,7 @@ from starlette.middleware.base import RequestResponseEndpoint
 from starlette.responses import Response
 
 from app.agents import build_investigation_pipeline
+from app.ensemble import compare_ensemble
 from app.config import get_settings
 from app.schemas import (
     AnalysisResponse,
@@ -499,3 +500,38 @@ def submit_test_result(workflow_id: str, request: TestResultRequest) -> dict:
         raise HTTPException(status_code=404, detail="Debugging run not found.") from exc
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+
+@app.post("/v1/ensemble-analyses")
+async def create_ensemble_analysis(
+    screenshot: UploadFile = File(...),
+    providers: str = Form(..., max_length=200),
+    bug_report: str | None = Form(default=None, max_length=4000),
+) -> dict:
+    """Compare explicitly selected vision providers while preserving disagreements."""
+    allowed_types = {"image/png", "image/jpeg", "image/webp"}
+    if screenshot.content_type not in allowed_types:
+        raise HTTPException(status_code=415, detail="Upload a PNG, JPEG, or WEBP image.")
+    raw = await screenshot.read(settings.max_upload_bytes + 1)
+    if len(raw) > settings.max_upload_bytes:
+        raise HTTPException(status_code=413, detail="Screenshot exceeds the upload size limit.")
+    selected = [item.strip() for item in providers.split(",") if item.strip()]
+    allowed_providers = {"mock", "openai_compatible", "anthropic", "gemini"}
+    if not selected or len(selected) > 4 or len(set(selected)) != len(selected):
+        raise HTTPException(
+            status_code=422,
+            detail="Select between one and four unique providers.",
+        )
+    if any(item not in allowed_providers for item in selected):
+        raise HTTPException(
+            status_code=422,
+            detail="Unsupported provider selected. Allowed providers: mock, openai_compatible, anthropic, gemini.",
+        )
+    try:
+        return compare_ensemble(raw, bug_report, selected)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.exception("Unexpected ensemble analysis failure")
+        raise HTTPException(status_code=502, detail="Ensemble analysis failed.") from exc
