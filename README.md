@@ -4,7 +4,7 @@
 
 DebugLens turns a UI failure report into a traceable investigation. It validates screenshots, records evidence metadata, optionally calls a vision-capable model, returns structured findings, and makes clear what remains unverified. The longer-term workflow correlates screenshots with browser/runtime evidence, proposes regression tests, and prepares fixes for human review.
 
-> **Current maturity:** DebugLens includes a local investigation lifecycle, SQLite audit history, Streamlit review dashboard, three vision-provider adapters, model comparison, allow-listed browser evidence, review-only patch proposals, signed execution-result ingestion, a network-disabled Docker test worker, a Git-verified patch workspace provisioner, a durable local SQLite execution queue with cancellation and dead-letter replay, and a dry-run-first stale worker-container cleanup utility, and a dry-run-first local retention CLI. Deterministic pixel-diff metrics and bounded static accessibility heuristics are available as local utilities. Full LLM specialist-agent orchestration, OCR-based screenshot redaction and comprehensive DLP, independent sandbox review, production identity/RBAC/tenant isolation, isolated browser workers, and the AWS application deployment are still incomplete. Separate API/worker IAM policy baselines exist in Terraform but are not attached to deployed services. Pattern-based redaction of common sensitive text before provider calls is implemented; see `docs/provider-input-redaction.md` for coverage and limitations. Keep the service local or in a trusted development environment; do not expose it as a public service.
+> **Current maturity:** DebugLens includes a local investigation lifecycle, SQLite audit history, Streamlit review dashboard, three vision-provider adapters, multi-model ensemble comparison with disagreement preservation, a labelled benchmark runner, model comparison, allow-listed browser evidence, review-only patch proposals, signed execution-result ingestion, a network-disabled Docker test worker, a Git-verified patch workspace provisioner, a durable local SQLite execution queue with cancellation and dead-letter replay, and a dry-run-first stale worker-container cleanup utility, and a dry-run-first local retention CLI. Deterministic pixel-diff metrics and bounded static accessibility heuristics are available as local utilities. Full LLM specialist-agent orchestration, OCR-based screenshot redaction and comprehensive DLP, independent sandbox review, production identity/RBAC/tenant isolation, isolated browser workers, and the AWS application deployment are still incomplete. Separate API/worker IAM policy baselines exist in Terraform but are not attached to deployed services. Pattern-based redaction of common sensitive text before provider calls is implemented; see `docs/provider-input-redaction.md` for coverage and limitations. Keep the service local or in a trusted development environment; do not expose it as a public service.
 
 ## Product principles
 
@@ -60,7 +60,7 @@ Human verification and approval (no automatic patch application or deployment)
 - app/: FastAPI API, typed contracts, multimodal adapters, deterministic investigation stages, evaluation harness, SQLite run store, workflow state machine, optional browser capture, visual regression metrics, and static accessibility heuristics.
 - tests/: API, image validation, model comparison and workflow transition tests.
 - frontend/: optional Streamlit upload client.
-- docs/: architecture, agent workflow, threat model, evaluation, operations, isolated-worker contract, visual regression, accessibility, provider-input redaction, local data-retention, production-readiness guides, and roadmap.
+- docs/: architecture, agent workflow, threat model, evaluation, operations, isolated-worker contract, visual regression, accessibility, provider-input redaction, multi-model ensemble, labelled benchmarking, local data-retention, production-readiness guides, and roadmap.
 - runner/: allowlisted test worker, Docker orchestrator, Git-verified workspace provisioner, and durable local execution queue.
 - .github/workflows/: CI quality gates.
 - examples/demo-ui/: intentionally broken and fixed synthetic storefront for reproducible demos.
@@ -162,6 +162,8 @@ Use a model that supports image input and the required JSON response behaviour. 
 - POST /v1/analyses: multipart upload with screenshot, optional bug_report, and optional context_json.
 - POST /v1/ensemble-analyses: compare one to four explicitly selected providers and preserve corroborated and minority findings.
 
+See [multi-model ensemble methodology](docs/multi-model-ensemble.md) and [labelled screenshot benchmarking](docs/benchmarking.md) for evaluation and safety limits.
+
 Example:
 
 ~~~powershell
@@ -239,7 +241,7 @@ The workflow module models legal transitions from RECEIVED through evidence coll
 6. Production operations: observability, rate limits, privacy controls, security review, and incident response.
 7. AWS: ECS/Fargate, S3, SQS, Step Functions approval callbacks, Secrets Manager, CloudWatch and Terraform after review.
 
-See docs/architecture.md, docs/agent-workflow.md, docs/browser-capture.md, docs/end-to-end-workflow.md, docs/model-evaluation.md, docs/ai-assurance.md, docs/threat-model.md, docs/evaluation.md, docs/operations.md, and docs/roadmap.md. The AWS artifact-storage Terraform baseline is documented in infra/terraform/README.md.
+See docs/architecture.md, docs/agent-workflow.md, docs/browser-capture.md, docs/end-to-end-workflow.md, docs/model-evaluation.md, docs/multi-model-ensemble.md, docs/benchmarking.md, docs/ai-assurance.md, docs/threat-model.md, docs/evaluation.md, docs/operations.md, and docs/roadmap.md. The AWS artifact-storage Terraform baseline is documented in infra/terraform/README.md.
 
 
 ## Project governance
