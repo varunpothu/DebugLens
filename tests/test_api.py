@@ -375,3 +375,81 @@ def test_browser_evidence_is_blocked_outside_local_development(monkeypatch) -> N
     )
     assert response.status_code == 503
     assert "isolated browser worker" in response.json()["detail"]
+
+
+
+def test_ensemble_endpoint_reports_model_agreement_and_disagreement(monkeypatch) -> None:
+    from app.schemas import AnalysisResponse, Evidence, Finding, Severity
+
+    def fake_ensemble(image_bytes: bytes, bug_report: str | None, providers: list[str]) -> dict:
+        finding = Finding(
+            title="Primary button clipped",
+            severity=Severity.MEDIUM,
+            confidence=0.7,
+            category="layout",
+            summary="The button extends beyond its parent container.",
+            evidence=[Evidence(source="screenshot", description="Synthetic test evidence", observed=True)],
+            hypotheses=["A container width rule may be involved."],
+            recommended_checks=["Compare a second viewport."],
+        )
+        return {
+            "schema_version": 1,
+            "providers_requested": providers,
+            "providers_completed": 1,
+            "providers_failed": 0,
+            "provider_runs": [{
+                "provider": providers[0],
+                "status": "completed",
+                "latency_ms": 1.0,
+                "model_version": "test-model",
+                "findings": [finding.model_dump(mode="json")],
+                "error_code": None,
+            }],
+            "finding_clusters": [{
+                "cluster_id": "F-001",
+                "provider_observations": [{"provider": providers[0], "title": finding.title}],
+                "supporting_provider_count": 1,
+                "supporting_providers": providers,
+                "severity_distribution": {"medium": 1},
+                "agreement_label": "single-provider signal",
+            }],
+            "unresolved_disagreement_count": 1,
+            "assurance": {
+                "human_review_required": True,
+                "agreement_is_not_ground_truth": True,
+                "confidence_values_are_not_cross_model_calibrated": True,
+                "minority_findings_preserved": True,
+                "automatic_patch_execution": False,
+            },
+            "limitations": ["Semantic clustering is heuristic."],
+        }
+
+    monkeypatch.setattr("app.main.compare_ensemble", fake_ensemble)
+    response = client.post(
+        "/v1/ensemble-analyses",
+        files={"screenshot": ("screen.png", png_bytes(), "image/png")},
+        data={"bug_report": "Primary button clipped", "providers": "mock,anthropic"},
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["providers_requested"] == ["mock", "anthropic"]
+    assert payload["assurance"]["human_review_required"] is True
+    assert payload["assurance"]["automatic_patch_execution"] is False
+
+
+def test_ensemble_endpoint_rejects_unknown_provider() -> None:
+    response = client.post(
+        "/v1/ensemble-analyses",
+        files={"screenshot": ("screen.png", png_bytes(), "image/png")},
+        data={"providers": "unknown-model"},
+    )
+    assert response.status_code == 422
+
+
+def test_ensemble_endpoint_rejects_more_than_four_providers() -> None:
+    response = client.post(
+        "/v1/ensemble-analyses",
+        files={"screenshot": ("screen.png", png_bytes(), "image/png")},
+        data={"providers": "mock,openai_compatible,anthropic,gemini,mock2"},
+    )
+    assert response.status_code == 422
