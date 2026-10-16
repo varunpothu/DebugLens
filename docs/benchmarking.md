@@ -35,7 +35,7 @@ Paths must remain inside the manifest directory. Symlinked files, absolute paths
 python -m app.benchmark .\benchmarks\manifest.json --provider mock --output .\benchmark-report.json
 ~~~
 
-Use a real provider only after reviewing the screenshot-transfer consent gate and provider data-processing terms. Keep API keys in the environment, never in the manifest.
+Mock mode is intentionally rejected for benchmark scoring because it does not inspect screenshot pixels. Use a configured real vision provider only after reviewing the screenshot-transfer consent gate and provider data-processing terms. Keep API keys in the environment, never in the manifest.
 
 ## Interpreting the report
 
