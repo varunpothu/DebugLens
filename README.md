@@ -160,6 +160,7 @@ Use a model that supports image input and the required JSON response behaviour. 
 - GET /health: liveness.
 - GET /ready: configured mode, without credentials.
 - POST /v1/analyses: multipart upload with screenshot, optional bug_report, and optional context_json.
+- POST /v1/ensemble-analyses: compare one to four explicitly selected providers and preserve corroborated and minority findings.
 
 Example:
 
