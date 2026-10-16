@@ -84,3 +84,19 @@ def test_ensemble_reports_provider_failure_without_claiming_no_findings(monkeypa
 def test_ensemble_rejects_invalid_provider_lists(providers: list[str]) -> None:
     with pytest.raises(ValueError):
         compare_ensemble(png_bytes(), None, providers)
+
+
+
+def test_ensemble_distinguishes_privacy_consent_gate_from_provider_outage(monkeypatch) -> None:
+    from app.services.analyzer import ProviderConsentRequired
+
+    def fake_analyse(image_bytes: bytes, bug_report: str | None, provider: str) -> AnalysisResponse:
+        if provider != "mock":
+            raise ProviderConsentRequired("Do not leak this detailed message.")
+        return response(provider, [])
+
+    monkeypatch.setattr("app.ensemble.analyse_screenshot", fake_analyse)
+    report = compare_ensemble(png_bytes(), None, ["mock", "anthropic"])
+    failed = next(item for item in report["provider_runs"] if item["provider"] == "anthropic")
+    assert failed["error_code"] == "provider_consent_required"
+    assert "leak" not in str(report)
