@@ -43,8 +43,13 @@ def load_manifest(manifest_path: Path) -> tuple[Path, list[dict[str, Any]]]:
         payload = json.loads(manifest.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         raise BenchmarkInputError("Benchmark manifest is not readable valid JSON.") from exc
-    if not isinstance(payload, dict) or payload.get("schema_version") != 1:
-        raise BenchmarkInputError("Manifest must be an object with schema_version=1.")
+    if (
+        not isinstance(payload, dict)
+        or payload.get("schema_version") != 1
+        or not isinstance(payload.get("dataset_version"), str)
+        or not payload["dataset_version"].strip()
+    ):
+        raise BenchmarkInputError("Manifest must include schema_version=1 and a non-empty dataset_version.")
     cases = payload.get("cases")
     if not isinstance(cases, list) or not cases:
         raise BenchmarkInputError("Manifest must contain at least one benchmark case.")
@@ -83,6 +88,8 @@ def load_manifest(manifest_path: Path) -> tuple[Path, list[dict[str, Any]]]:
 
 def run_benchmark(manifest_path: Path, provider: str) -> dict[str, Any]:
     """Run a fixed provider on a labelled manifest and return aggregate detection metrics."""
+    if provider == "mock":
+        raise BenchmarkInputError("Mock mode is non-diagnostic and cannot produce meaningful benchmark metrics.")
     root, cases = load_manifest(manifest_path)
     per_case: list[dict[str, Any]] = []
     counts: dict[str, dict[str, int]] = defaultdict(lambda: {"tp": 0, "fp": 0, "fn": 0})
@@ -146,6 +153,7 @@ def run_benchmark(manifest_path: Path, provider: str) -> dict[str, Any]:
     return {
         "schema_version": 1,
         "provider": provider,
+        "dataset_version": json.loads(manifest_path.expanduser().resolve(strict=True).read_text(encoding="utf-8"))["dataset_version"],
         "case_count": len(cases),
         "completed_count": completed,
         "failed_count": failed,
