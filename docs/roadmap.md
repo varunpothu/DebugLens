@@ -19,8 +19,10 @@
 - [x] Structured output validation and safe provider failure handling
 - [x] Mocked HTTP contract tests for each provider
 - [x] Side-by-side model comparison harness for latency and output summaries
+- [x] Multi-model ensemble endpoint with heuristic finding clusters, provider failures, and preserved minority findings
+- [x] Labelled screenshot benchmark runner with category precision, recall, F1, and safe fixture path validation
 - [x] Deterministic evidence summary, hypothesis ranking, test-case proposal, and assurance blockers
-- [ ] Add a versioned, labelled screenshot benchmark with human-adjudicated ground truth
+- [ ] Populate a versioned, representative screenshot benchmark with human-adjudicated ground truth and held-out application splits
 - [x] Add deterministic pattern-based text redaction before external provider calls (not screenshot OCR or comprehensive DLP)
 - [x] Deny external vision-provider image transfer by default unless an operator explicitly opts in; this is a consent gate, not OCR/DLP.
 - [ ] Add OCR-assisted screenshot redaction, adversarial obfuscation tests, and independent privacy review
@@ -88,4 +90,4 @@
 - [ ] GitHub OIDC deployment roles, staging environment, rollback, and disaster recovery
 - [ ] Authentication, authorisation, rate limits, tenant isolation, and a production security review
 
-The checked items are implemented in this repository. Unchecked items are planned and must not be represented as production-ready capabilities.
+The checked items are implemented in this repository. Unchecked items are planned and must not be represented as production-ready capabilities. The benchmark runner exists, but the repository does not yet include a sufficiently representative, independently labelled benchmark dataset.
