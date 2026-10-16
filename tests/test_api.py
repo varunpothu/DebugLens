@@ -379,7 +379,7 @@ def test_browser_evidence_is_blocked_outside_local_development(monkeypatch) -> N
 
 
 def test_ensemble_endpoint_reports_model_agreement_and_disagreement(monkeypatch) -> None:
-    from app.schemas import AnalysisResponse, Evidence, Finding, Severity
+    from app.schemas import Evidence, Finding, Severity
 
     def fake_ensemble(image_bytes: bytes, bug_report: str | None, providers: list[str]) -> dict:
         finding = Finding(
