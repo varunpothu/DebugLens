@@ -75,3 +75,17 @@ For each release, maintain a claim-evidence record:
 ## Current assurance status
 
 The repository currently has documented principles, a threat model, typed outputs, provider response validation, target URL validation, workflow transition checks, and CI. It does not yet have a labelled benchmark, automatic image redaction, full tool-permission enforcement, durable audit storage, production egress controls, or a production incident process. Those are release blockers for any production deployment.
+
+
+## Multi-model ensemble assurance
+
+The ensemble endpoint is a comparison aid, not a voting system. It preserves each provider's original findings and reports heuristic clusters as cross-provider corroboration or single-provider signals. It does not average confidence values across providers, because their scales may not be comparable. Provider failures are explicit and are never counted as zero findings. Reviewers must inspect the original evidence and can reject a cluster when the heuristic merged distinct defects.
+
+Before relying on the ensemble in a release decision:
+
+- Evaluate each provider and the ensemble separately on the same held-out, independently labelled dataset.
+- Measure false positives and false negatives by defect category and impact.
+- Inspect false agreement cases where multiple models repeat the same incorrect diagnosis.
+- Inspect minority findings for validity rather than discarding them.
+- Record provider model versions, latency, failures, and cost alongside benchmark results.
+- Never let ensemble agreement alone unlock patch execution, verification, merge, or deployment.
