@@ -21,13 +21,13 @@ def _safe_fixture_path(root: Path, relative: str) -> Path:
     if not relative or Path(relative).is_absolute():
         raise BenchmarkInputError("Fixture image paths must be relative to the benchmark root.")
     candidate = root / relative
-    if candidate.is_symlink():
-        raise BenchmarkInputError("Symlinked benchmark fixtures are not allowed.")
-    resolved = candidate.resolve(strict=True)
+    resolved = candidate.resolve(strict=False)
     try:
         resolved.relative_to(root.resolve(strict=True))
     except ValueError as exc:
         raise BenchmarkInputError("Fixture image must remain inside the benchmark root.") from exc
+    if candidate.is_symlink():
+        raise BenchmarkInputError("Symlinked benchmark fixtures are not allowed.")
     if not resolved.is_file():
         raise BenchmarkInputError("Fixture image must be a regular file.")
     if resolved.stat().st_size > 10 * 1024 * 1024:
