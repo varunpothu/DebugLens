@@ -30,7 +30,8 @@
 - [x] Add deterministic pattern-based text redaction before external provider calls (not screenshot OCR or comprehensive DLP)
 - [x] Deny external vision-provider image transfer by default unless an operator explicitly opts in; this is a consent gate, not OCR/DLP.
 - [ ] Add OCR-assisted screenshot redaction, adversarial obfuscation tests, and independent privacy review
-- [ ] Add retry budgets, provider rate limits, persistent cost telemetry, and provider budget enforcement
+- [x] Add process-local per-provider request budgets with 429/Retry-After responses; these are not distributed quotas.
+- [ ] Add bounded retries, distributed provider quotas, persistent price-aware cost telemetry, and account-level budget enforcement
 - [x] Return provider response IDs and input/output token counts when supplied by the provider
 - [x] Version the vision prompt contract and expose its version in analysis responses; this is traceability metadata, not persistent prompt history
 
