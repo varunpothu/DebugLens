@@ -146,15 +146,15 @@ resource "aws_iam_role_policy" "instance_runtime" {
         Resource = ["${aws_cloudwatch_log_group.application.arn}:*"]
       },
       {
-        Sid      = "WriteDatabaseBackups"
+        Sid      = "ReadAndWriteDatabaseBackups"
         Effect   = "Allow"
-        Action   = ["s3:PutObject"]
+        Action   = ["s3:GetObject", "s3:PutObject"]
         Resource = ["${aws_s3_bucket.artifacts.arn}/backups/*"]
       },
       {
-        Sid      = "EncryptDatabaseBackups"
+        Sid      = "EncryptAndDecryptDatabaseBackups"
         Effect   = "Allow"
-        Action   = ["kms:Encrypt", "kms:GenerateDataKey"]
+        Action   = ["kms:Decrypt", "kms:Encrypt", "kms:GenerateDataKey"]
         Resource = [aws_kms_key.artifacts.arn]
         Condition = local.s3_kms_conditions
       }
