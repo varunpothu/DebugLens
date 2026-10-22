@@ -77,7 +77,7 @@ def test_analysis_exposes_provider_usage_metadata(monkeypatch) -> None:
             raw_response_id="response-test-123",
             usage_input_tokens=321,
             usage_output_tokens=45,
-            prompt_version="ui-investigator-v1",
+            prompt_version="openai-compatible-ui-v1",
         ),
     )
 
@@ -86,7 +86,7 @@ def test_analysis_exposes_provider_usage_metadata(monkeypatch) -> None:
     assert result.provider_response_id == "response-test-123"
     assert result.provider_usage_input_tokens == 321
     assert result.provider_usage_output_tokens == 45
-    assert result.prompt_version == "ui-investigator-v1"
+    assert result.prompt_version == "openai-compatible-ui-v1"
 
 
 def test_mock_analysis_has_no_provider_usage_metadata() -> None:
