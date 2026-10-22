@@ -21,8 +21,8 @@ cleanup() {
   fi
 }
 on_error() {
-  local status=$?
-  local line="$1"
+  local status="$1"
+  local line="$2"
   trap - ERR
   echo "Backup failed with exit code $status at line $line."
   if [[ -n "${DEBUGLENS_BACKUP_FAILURE_TOPIC_ARN:-}" && -n "${AWS_REGION:-}" ]]; then
@@ -35,11 +35,10 @@ on_error() {
   exit "$status"
 }
 trap cleanup EXIT
-trap 'on_error "$LINENO"' ERR
+trap 'on_error "$?" "$LINENO"' ERR
 
 if [[ -z "${DEBUGLENS_BACKUP_BUCKET:-}" || -z "${DEBUGLENS_BACKUP_KMS_KEY_ARN:-}" || -z "${AWS_REGION:-}" ]]; then
-  echo "Backup configuration is incomplete; refusing to upload."
-  exit 1
+  on_error 1 "$LINENO"
 fi
 
 container_id="$(docker compose \
@@ -48,8 +47,7 @@ container_id="$(docker compose \
   -f /opt/debuglens/deploy/compose.aws.yml \
   ps -q api)"
 if [[ -z "$container_id" ]]; then
-  echo "API container is not available; backup skipped."
-  exit 1
+  on_error 1 "$LINENO"
 fi
 
 echo "Starting SQLite backup at $timestamp"
@@ -63,7 +61,7 @@ expected_sha="$(printf '%s' "$metadata" | python3 -c 'import json,sys; print(jso
 actual_sha="$(sha256sum "$backup_path" | awk '{print $1}')"
 if [[ "$expected_sha" != "$actual_sha" ]]; then
   echo "Backup SHA-256 mismatch; preserving the local copy for investigation."
-  exit 1
+  on_error 1 "$LINENO"
 fi
 
 aws s3 cp "$backup_path" "s3://$DEBUGLENS_BACKUP_BUCKET/backups/$backup_name" \
