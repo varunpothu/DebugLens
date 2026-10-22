@@ -43,6 +43,7 @@ from app.workflow import WorkflowState
 from app.browser.capture import UnsafeTargetError, capture_page
 from app.services.analyzer import InvalidImageError, ProviderConsentRequired, analyse_screenshot
 from app.patch_suggester import suggest_patch
+from app.request_body_limit import RequestBodyLimitMiddleware
 from app.rate_limit import InMemoryRateLimiter
 
 settings = get_settings()
@@ -79,6 +80,10 @@ app = FastAPI(
     description="Evidence-first screenshot debugging and verification API.",
     version="0.1.0",
     lifespan=lifespan,
+)
+app.add_middleware(
+    RequestBodyLimitMiddleware,
+    max_bytes=settings.max_upload_bytes + 1024 * 1024,
 )
 app.add_middleware(
     CORSMiddleware,

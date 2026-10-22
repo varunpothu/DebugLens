@@ -5,7 +5,7 @@
 ## Implemented local controls
 
 - API supports a configured shared bearer token; startup outside `local`, `development`, and `test` refuses tokens shorter than 32 non-whitespace characters. This is still not per-user identity, RBAC, or tenant isolation.
-- Uploads have content-type, byte-size, image-format, and pixel-count checks; an app-level guard rejects oversized declared `Content-Length` bodies.
+- Uploads have content-type, byte-size, image-format, and pixel-count checks; an ASGI guard bounds complete `/v1/` write bodies even when chunked requests omit `Content-Length`, while the app guard rejects malformed or oversized declared lengths.
 - API responses add `nosniff`, frame-denial, no-referrer, and no-store headers, and correlation IDs are restricted to a short safe character set. The body guard does not replace streaming limits at a reverse proxy and does not independently cap chunked requests without `Content-Length`.
 - Write/analysis POST endpoints use a bounded, thread-safe process-local fixed-window limiter with `429` and `Retry-After`; it is a local guardrail, not a shared limiter across processes or hosts.
 - A dry-run-first CLI can delete old terminal workflows and related local SQLite records, with an aggregate retention audit event. It does not delete S3 objects, backups, logs, provider-side copies, or containers.
