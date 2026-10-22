@@ -7,7 +7,7 @@ from PIL import Image, UnidentifiedImageError
 from app.config import get_settings
 from app.providers.base import ImageInput, ProviderResult, VisionProvider
 from app.redaction import redact_sensitive_text
-from app.providers.budget import ProviderCallBudget, ProviderRateLimitError
+from app.providers.budget import ProviderCallBudget
 from app.providers.native_vision import AnthropicVisionProvider, GeminiVisionProvider
 from app.providers.openai_compatible import OpenAICompatibleVisionProvider
 from app.schemas import AnalysisResponse, Evidence, Finding, Severity
