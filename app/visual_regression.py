@@ -8,7 +8,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from io import BytesIO
 
-from PIL import Image, ImageChops, ImageStat, UnidentifiedImageError
+from PIL import Image, ImageChops, ImageDraw, ImageStat, UnidentifiedImageError
 
 MAX_IMAGE_BYTES = 25 * 1024 * 1024
 MAX_IMAGE_PIXELS = 40_000_000
@@ -29,6 +29,8 @@ class VisualRegressionReport:
     total_pixels: int | None
     changed_ratio: float | None
     mean_absolute_error: float | None
+    perceptual_hash_distance: float | None
+    masked_pixels: int
     pixel_threshold: int
     max_changed_ratio: float
     within_threshold: bool
@@ -58,24 +60,42 @@ def _decode_screenshot(content: bytes) -> Image.Image:
         raise VisualRegressionInputError("Screenshot bytes are not a valid supported image.") from exc
 
 
+def _difference_hash(image: Image.Image) -> int:
+    """Return a compact 64-bit difference hash for perceptual-change signalling."""
+    grayscale = image.convert("L").resize((9, 8), Image.Resampling.LANCZOS)
+    pixels = list(grayscale.getdata())
+    result = 0
+    for row in range(8):
+        for column in range(8):
+            if pixels[row * 9 + column] > pixels[row * 9 + column + 1]:
+                result |= 1 << (row * 8 + column)
+    return result
+
+
 def compare_screenshots(
     baseline_bytes: bytes,
     current_bytes: bytes,
     *,
     pixel_threshold: int = 12,
     max_changed_ratio: float = 0.005,
+    mask_regions: list[tuple[int, int, int, int]] | None = None,
 ) -> VisualRegressionReport:
     """Compare same-sized screenshots and report changed-pixel ratio and MAE.
 
     A pixel counts as changed when its maximum per-channel absolute difference is greater than
     pixel_threshold. The changed ratio is the fraction of such pixels. The mean absolute error
-    is the average absolute channel difference normalised to 0..1. Dimension mismatch is always
-    outside threshold because alignment would otherwise be ambiguous.
+    is the average absolute channel difference normalised to 0..1. A difference-hash distance
+    adds a coarse perceptual signal; it is not a learned metric or a correctness guarantee.
+    Optional mask rectangles use (left, top, right, bottom) coordinates and exclude dynamic
+    regions from pixel metrics. Dimension mismatch is always outside threshold.
     """
     if not 0 <= pixel_threshold <= 255:
         raise ValueError("pixel_threshold must be between 0 and 255.")
     if not 0.0 <= max_changed_ratio <= 1.0:
         raise ValueError("max_changed_ratio must be between 0 and 1.")
+    regions = mask_regions or []
+    if len(regions) > 100:
+        raise ValueError("At most 100 dynamic regions may be masked.")
     baseline = _decode_screenshot(baseline_bytes)
     current = _decode_screenshot(current_bytes)
     baseline_width, baseline_height = baseline.size
@@ -91,11 +111,28 @@ def compare_screenshots(
             total_pixels=None,
             changed_ratio=None,
             mean_absolute_error=None,
+            perceptual_hash_distance=None,
+            masked_pixels=0,
             pixel_threshold=pixel_threshold,
             max_changed_ratio=max_changed_ratio,
             within_threshold=False,
             difference_bounds=None,
         )
+    comparison_mask = Image.new("L", baseline.size, 255)
+    draw = ImageDraw.Draw(comparison_mask)
+    for region in regions:
+        if len(region) != 4 or any(not isinstance(value, int) for value in region):
+            raise ValueError("Each mask region must contain four integer coordinates.")
+        left, top, right, bottom = region
+        if not (0 <= left < right <= baseline_width and 0 <= top < bottom <= baseline_height):
+            raise ValueError("Mask regions must be non-empty and lie within the screenshot.")
+        draw.rectangle((left, top, right - 1, bottom - 1), fill=0)
+
+    masked_pixels = comparison_mask.histogram()[0]
+    compared_pixels = baseline_width * baseline_height - masked_pixels
+    if compared_pixels < 1:
+        raise ValueError("Mask regions must leave at least one pixel available for comparison.")
+
     difference = ImageChops.difference(baseline, current)
     channels = difference.split()
     maximum_channel_difference = ImageChops.lighter(
@@ -104,10 +141,16 @@ def compare_screenshots(
     changed_mask = maximum_channel_difference.point(
         lambda value: 255 if value > pixel_threshold else 0
     )
+    changed_mask = ImageChops.multiply(changed_mask, comparison_mask)
     changed_pixels = changed_mask.histogram()[255]
-    total_pixels = baseline_width * baseline_height
-    changed_ratio = changed_pixels / total_pixels
-    mean_absolute_error = sum(ImageStat.Stat(difference).mean) / (3 * 255)
+    changed_ratio = changed_pixels / compared_pixels
+    mean_absolute_error = sum(
+        sum(ImageStat.Stat(channel, mask=comparison_mask).mean) for channel in channels
+    ) / (3 * 255)
+
+    current_for_hash = current.copy()
+    current_for_hash.paste(baseline, (0, 0), ImageChops.invert(comparison_mask))
+    hash_distance = (_difference_hash(baseline) ^ _difference_hash(current_for_hash)).bit_count() / 64
     return VisualRegressionReport(
         status="compared",
         baseline_width=baseline_width,
@@ -115,9 +158,11 @@ def compare_screenshots(
         current_width=current_width,
         current_height=current_height,
         changed_pixels=changed_pixels,
-        total_pixels=total_pixels,
+        total_pixels=compared_pixels,
         changed_ratio=changed_ratio,
         mean_absolute_error=mean_absolute_error,
+        perceptual_hash_distance=hash_distance,
+        masked_pixels=masked_pixels,
         pixel_threshold=pixel_threshold,
         max_changed_ratio=max_changed_ratio,
         within_threshold=changed_ratio <= max_changed_ratio,
