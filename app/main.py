@@ -45,6 +45,7 @@ from app.services.analyzer import InvalidImageError, ProviderConsentRequired, an
 from app.patch_suggester import suggest_patch
 from app.request_body_limit import RequestBodyLimitMiddleware
 from app.rate_limit import InMemoryRateLimiter
+from app.providers.budget import ProviderRateLimitError
 
 settings = get_settings()
 rate_limiter = InMemoryRateLimiter(
