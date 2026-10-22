@@ -6,6 +6,7 @@ existing destination; operators must explicitly move the current database aside 
 from __future__ import annotations
 
 import argparse
+from contextlib import closing
 import hashlib
 import json
 import os
@@ -64,9 +65,10 @@ def backup_database(source_path: str | Path, destination_path: str | Path) -> di
     os.close(file_descriptor)
     temporary = Path(temporary_name)
     try:
-        with _readonly_connection(source) as source_db:
-            with sqlite3.connect(temporary) as destination_db:
+        with closing(_readonly_connection(source)) as source_db:
+            with closing(sqlite3.connect(temporary)) as destination_db:
                 source_db.backup(destination_db, pages=256, sleep=0.01)
+                destination_db.commit()
                 _integrity_check(destination_db)
         with temporary.open("rb+") as stream:
             stream.flush()
@@ -90,7 +92,7 @@ def backup_database(source_path: str | Path, destination_path: str | Path) -> di
 def restore_database(backup_path: str | Path, destination_path: str | Path) -> dict[str, Any]:
     """Restore to a new database path after validating the backup; never overwrite."""
     backup = Path(backup_path)
-    with _readonly_connection(backup) as connection:
+    with closing(_readonly_connection(backup)) as connection:
         _integrity_check(connection)
     return backup_database(backup, destination_path)
 
