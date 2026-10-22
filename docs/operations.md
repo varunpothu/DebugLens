@@ -9,13 +9,14 @@ Use Python 3.11 or 3.12, create a virtual environment, install the dev extra, an
 - Invalid upload: return 415, 413 or 422; do not retry.
 - Invalid context: return 400; correct the request.
 - Provider unavailable: return 503 without exposing credential or provider internals.
+- Provider request budget exhausted: return 429 with `Retry-After`; do not automatically retry. The default budget is process-local and does not enforce account-wide or billing limits.
 - Timeout: mark the workflow failed or retry only within a configured budget.
 - Test failure: preserve the failure result; never convert it into success after a retry without recording the earlier failure.
 - Suspected sensitive data: stop external processing, restrict access, follow the organisation's incident and deletion process.
 
 ## Production signals
 
-Monitor request count, rejection rate, p50/p95 latency, provider error/timeout rate, queue depth, dead-letter count, analysis completion rate, token/cost budget, test flakiness, human override rate, and unsafe-action attempts.
+Monitor request count, rejection rate, p50/p95 latency, provider error/timeout/rate-limit rate, provider-reported input/output tokens by provider/model/prompt version, queue depth, dead-letter count, analysis completion rate, actual provider spend against external billing data, test flakiness, human override rate, and unsafe-action attempts. Token counts are usage signals, not dollar-cost estimates; pricing and account-level budgets must be maintained separately.
 
 ## Incident response checklist
 
