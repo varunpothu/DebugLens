@@ -2,7 +2,7 @@
 
 ## Status
 
-The repository contains a fixed-suite worker (`runner/worker.py`), a minimal image (`runner/Dockerfile`), and a host-side Docker orchestrator (`runner/orchestrate.py`). The orchestrator submits HMAC-signed results to `/v1/debug-runs/{workflow_id}/execution-results`. The worker itself receives no signing secret. This is a local prototype, not production-ready multi-tenant execution. The existing `/test-results` endpoint remains a reviewer-reported result.
+The repository contains a fixed-suite worker (`runner/worker.py`), a minimal image (`runner/Dockerfile`), and a host-side Docker orchestrator (`runner/orchestrate.py`). The orchestrator submits HMAC-signed results to `/v1/debug-runs/{workflow_id}/execution-results`. The worker itself receives no signing secret. The host orchestrator explicitly pins the container process to UID/GID `10001:10001`, enables Docker's init process to reap child processes, and caps open file descriptors. These are defence-in-depth controls; they do not replace an independent container-boundary review. This is a local prototype, not production-ready multi-tenant execution. The existing `/test-results` endpoint remains a reviewer-reported result.
 
 ## Allowed suites
 
@@ -22,10 +22,13 @@ Prepare a dedicated workspace containing only the reviewed source snapshot, then
 
 ```bash
 docker run --rm \
+  --init \
+  --user 10001:10001 \
   --network none \
   --read-only \
   --cap-drop ALL \
   --security-opt no-new-privileges:true \
+  --ulimit nofile=1024:1024 \
   --memory 512m \
   --cpus 1 \
   --pids-limit 128 \
