@@ -87,6 +87,7 @@ class OpenAICompatibleVisionProvider:
                 model=self._model,
                 findings=findings,
                 raw_response_id=body.get("id"),
+                prompt_version="openai-compatible-ui-v1",
                 usage_input_tokens=usage.get("prompt_tokens"),
                 usage_output_tokens=usage.get("completion_tokens"),
             )
