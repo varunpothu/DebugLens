@@ -3,12 +3,117 @@ set -Eeuo pipefail
 exec > >(tee -a /var/log/debuglens-bootstrap.log | logger -t debuglens-bootstrap -s 2>/dev/console) 2>&1
 
 dnf update -y
-dnf install -y docker git curl amazon-cloudwatch-agent
+dnf install -y docker git curl awscli-2 amazon-cloudwatch-agent
 systemctl enable --now docker
 
 install -d -m 0755 /usr/local/lib/docker/cli-plugins
-curl -fsSL https://github.com/docker/compose/releases/download/v2.39.2/docker-compose-linux-aarch64 -o /usr/local/lib/docker/cli-plugins/docker-compose
+curl -fsSL https://github.com/docker/compose/releases/download/v2.39.2/docker-compose-linux-aarch64 -o /tmp/docker-compose-linux-aarch64
+curl -fsSL https://github.com/docker/compose/releases/download/v2.39.2/checksums.txt -o /tmp/docker-compose-checksums.txt
+grep 'docker-compose-linux-aarch64
+
+if [ ! -d /opt/debuglens/.git ]; then
+  git clone --depth 1 --branch main https://github.com/varunpothu/DebugLens.git /opt/debuglens
+fi
+
+cat >/usr/local/sbin/debuglens-start <<'SCRIPT'
+#!/bin/bash
+set -Eeuo pipefail
+umask 077
+
+parameter() {
+  aws ssm get-parameter \
+    --name "/debuglens/$DEBUGLENS_ENVIRONMENT/$1" \
+    --with-decryption \
+    --query 'Parameter.Value' \
+    --output text \
+    --region "$AWS_REGION"
+}
+
+domain="$(parameter application-domain)"
+issuer="$(parameter cognito-issuer)"
+client_id="$(parameter cognito-client-id)"
+client_secret="$(parameter oauth-client-secret)"
+api_token="$(parameter api-access-token)"
+cookie_secret="$(parameter oauth-cookie-secret)"
+vision_key="$(parameter vision-api-key 2>/dev/null || true)"
+
+if [[ -z "$domain" || -z "$issuer" || -z "$client_id" || -z "$client_secret" || -z "$api_token" || -z "$cookie_secret" ]]; then
+  echo "Required DebugLens SSM parameters are missing; refusing to start the application."
+  exit 1
+fi
+
+install -d -m 0700 /etc/debuglens
+{
+  printf 'DOMAIN_NAME=%s\n' "$domain"
+  printf 'COGNITO_ISSUER_URL=%s\n' "$issuer"
+  printf 'COGNITO_CLIENT_ID=%s\n' "$client_id"
+  printf 'COGNITO_CLIENT_SECRET=%s\n' "$client_secret"
+  printf 'API_ACCESS_TOKEN=%s\n' "$api_token"
+  printf 'OAUTH2_PROXY_COOKIE_SECRET=%s\n' "$cookie_secret"
+  printf 'AWS_REGION=%s\n' "$AWS_REGION"
+  printf 'ANALYSIS_PROVIDER=mock\n'
+  printf 'VISION_API_KEY=%s\n' "$vision_key"
+} > /etc/debuglens/runtime.env
+chmod 0600 /etc/debuglens/runtime.env
+
+docker compose \
+  --project-directory /opt/debuglens \
+  --env-file /etc/debuglens/runtime.env \
+  -f /opt/debuglens/deploy/compose.aws.yml \
+  up -d --build --remove-orphans
+SCRIPT
+chmod 0750 /usr/local/sbin/debuglens-start
+
+cat >/etc/systemd/system/debuglens.service <<'UNIT'
+[Unit]
+Description=DebugLens private team application
+After=docker.service network-online.target
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+Environment=AWS_REGION=${aws_region}
+Environment=DEBUGLENS_ENVIRONMENT=${environment_name}
+ExecStart=/usr/local/sbin/debuglens-start
+ExecStop=/usr/bin/docker compose --project-directory /opt/debuglens --env-file /etc/debuglens/runtime.env -f /opt/debuglens/deploy/compose.aws.yml down
+TimeoutStartSec=0
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+
+cat >/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json <<'CWCONFIG'
+{
+  "logs": {
+    "logs_collected": {
+      "files": {
+        "collect_list": [
+          {
+            "file_path": "/var/log/debuglens-bootstrap.log",
+            "log_group_name": "/debuglens/${environment_name}/application",
+            "log_stream_name": "{instance_id}/bootstrap",
+            "timezone": "UTC"
+          }
+        ]
+      }
+    }
+  }
+}
+CWCONFIG
+
+/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+  -a fetch-config -m ec2 \
+  -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json -s || true
+
+systemctl daemon-reload
+systemctl enable debuglens.service
+systemctl start debuglens.service || echo "DebugLens not started yet. Add required SSM parameters and run: sudo systemctl restart debuglens"
+ /tmp/docker-compose-checksums.txt | (cd /tmp && sha256sum --check --status)
+mv /tmp/docker-compose-linux-aarch64 /usr/local/lib/docker/cli-plugins/docker-compose
 chmod 0755 /usr/local/lib/docker/cli-plugins/docker-compose
+rm -f /tmp/docker-compose-checksums.txt
 
 if [ ! -d /opt/debuglens/.git ]; then
   git clone --depth 1 --branch main https://github.com/varunpothu/DebugLens.git /opt/debuglens
