@@ -74,6 +74,7 @@ services:
       OAUTH2_PROXY_PROVIDER: oidc
       OAUTH2_PROXY_OIDC_ISSUER_URL: ${COGNITO_ISSUER_URL:?Missing Cognito issuer URL}
       OAUTH2_PROXY_CLIENT_ID: ${COGNITO_CLIENT_ID:?Missing Cognito client ID}
+      OAUTH2_PROXY_CLIENT_SECRET: ${COGNITO_CLIENT_SECRET:?Missing Cognito client secret}
       OAUTH2_PROXY_CODE_CHALLENGE_METHOD: S256
       OAUTH2_PROXY_REDIRECT_URL: https://${DOMAIN_NAME}/oauth2/callback
       OAUTH2_PROXY_UPSTREAMS: http://ui:8501/
