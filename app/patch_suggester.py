@@ -58,6 +58,9 @@ def _parse_suggestion(raw_text: str, target_file: str, provider: str, model: str
     payload: Any = json.loads(raw_text)
     if not isinstance(payload, dict):
         raise ValueError("Patch response must be a JSON object.")
+    expected_fields = {"patch_diff", "rationale", "risk", "rollback_plan"}
+    if set(payload) != expected_fields:
+        raise ValueError("Patch response must contain exactly the four supported fields.")
     patch_diff = payload.get("patch_diff")
     rationale = payload.get("rationale")
     risk = payload.get("risk")
