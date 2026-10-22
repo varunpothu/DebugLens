@@ -110,6 +110,7 @@ def analyse_screenshot(
             "External vision providers are disabled until ALLOW_UNREDACTED_SCREENSHOTS=true; "
             "screenshot pixels are not currently redacted."
         )
+    prompt_version: str | None = None
     usage_input_tokens: int | None = None
     usage_output_tokens: int | None = None
     if provider == "mock":
@@ -140,12 +141,14 @@ def analyse_screenshot(
             )
         ]
         provider_version = "baseline-1"
+        prompt_version = "mock-baseline-v1"
     else:
         result = _run_vision_provider(
             provider, image_bytes, digest, width, height, media_type, redact_sensitive_text(bug_report)
         )
         findings = result.findings
         provider_version = result.model
+        prompt_version = result.prompt_version
         usage_input_tokens = result.usage_input_tokens
         usage_output_tokens = result.usage_output_tokens
 
@@ -166,6 +169,7 @@ def analyse_screenshot(
     return AnalysisResponse(
         provider=provider,
         provider_version=provider_version,
+        prompt_version=prompt_version,
         usage_input_tokens=usage_input_tokens,
         usage_output_tokens=usage_output_tokens,
         screenshot_sha256=digest,
