@@ -46,6 +46,10 @@ from app.patch_suggester import suggest_patch
 from app.rate_limit import InMemoryRateLimiter
 
 settings = get_settings()
+rate_limiter = InMemoryRateLimiter(
+    max_requests=settings.api_rate_limit_requests,
+    window_seconds=settings.api_rate_limit_window_seconds,
+)
 logging.basicConfig(level=settings.log_level.upper())
 logger = logging.getLogger("debuglens")
 
