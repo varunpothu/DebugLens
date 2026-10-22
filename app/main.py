@@ -250,6 +250,12 @@ async def create_analysis(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except ProviderConsentRequired as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except ProviderRateLimitError as exc:
+        raise HTTPException(
+            status_code=429,
+            detail="Provider request budget exhausted. Retry after the current window.",
+            headers={"Retry-After": str(exc.retry_after_seconds)},
+        ) from exc
     except RuntimeError as exc:
         logger.warning("Analysis provider unavailable: %s", exc)
         raise HTTPException(status_code=503, detail="Configured analysis provider is unavailable.") from exc
@@ -288,6 +294,12 @@ async def create_debug_run(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except ProviderConsentRequired as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except ProviderRateLimitError as exc:
+        raise HTTPException(
+            status_code=429,
+            detail="Provider request budget exhausted. Retry after the current window.",
+            headers={"Retry-After": str(exc.retry_after_seconds)},
+        ) from exc
     except RuntimeError as exc:
         logger.warning("Analysis provider unavailable")
         raise HTTPException(status_code=503, detail="Configured analysis provider is unavailable.") from exc
@@ -394,6 +406,12 @@ async def collect_browser_evidence(
         raise HTTPException(status_code=502, detail="Browser returned an invalid screenshot.") from exc
     except ProviderConsentRequired as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except ProviderRateLimitError as exc:
+        raise HTTPException(
+            status_code=429,
+            detail="Provider request budget exhausted. Retry after the current window.",
+            headers={"Retry-After": str(exc.retry_after_seconds)},
+        ) from exc
     except RuntimeError as exc:
         logger.warning("Browser screenshot analysis provider unavailable")
         raise HTTPException(status_code=503, detail="Configured analysis provider is unavailable.") from exc
