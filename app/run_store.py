@@ -220,8 +220,8 @@ def transition_run(
                 (workflow_id,),
             ).fetchone()
             report = db.execute(
-                "SELECT patch_sha256, outcome, exit_code, timed_out FROM execution_reports "
-                "WHERE workflow_id = ? ORDER BY created_at DESC LIMIT 1",
+                "SELECT report_id, patch_sha256, suite, outcome, exit_code, timed_out, workspace_sha256 "
+                "FROM execution_reports WHERE workflow_id = ? ORDER BY created_at DESC LIMIT 1",
                 (workflow_id,),
             ).fetchone()
             if current != WorkflowState.TESTED or patch is None or report is None:
@@ -243,6 +243,23 @@ def transition_run(
             raise
         events.append(_event_dict(event))
         now = datetime.now(timezone.utc).isoformat()
+        if target == WorkflowState.VERIFIED:
+            # Persist the exact patch and trusted execution report that satisfied the gate.
+            # This is an audit record, not a substitute for production user identity/RBAC.
+            events.append({
+                "event_type": "verification_approval_recorded",
+                "event_id": str(uuid4()),
+                "workflow_id": workflow_id,
+                "from_state": current.value,
+                "to_state": target.value,
+                "actor": actor,
+                "reason": reason,
+                "timestamp": now,
+                "patch_sha256": patch["patch_sha256"],
+                "execution_report_id": report["report_id"],
+                "execution_suite": report["suite"],
+                "workspace_sha256": report["workspace_sha256"],
+            })
         db.execute(
             "UPDATE debug_runs SET state = ?, updated_at = ?, events_json = ? WHERE workflow_id = ?",
             (target.value, now, json.dumps(events, separators=(",", ":")), workflow_id),
