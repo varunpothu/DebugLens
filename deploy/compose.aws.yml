@@ -21,7 +21,7 @@ services:
       ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-3-5-sonnet-latest}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
-      ALLOW_UNREDACTED_SCREENSHOTS: "false"
+      ALLOW_UNREDACTED_SCREENSHOTS: "${ALLOW_UNREDACTED_SCREENSHOTS:-false}"
       BROWSER_ENABLED: "false"
       ALLOWED_ORIGINS: https://${DOMAIN_NAME}
     volumes:
