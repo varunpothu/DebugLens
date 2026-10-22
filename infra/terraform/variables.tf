@@ -92,7 +92,7 @@ variable "ec2_instance_type" {
 }
 
 variable "allowed_ingress_cidrs" {
-  description = "Optional CIDR allow-list for HTTP/HTTPS. Leave empty for public internet ingress protected by Cognito sign-in."
+  description = "Optional CIDR allow-list for HTTPS. Port 80 remains public for ACME certificate issuance and HTTPS redirects."
   type        = list(string)
   default     = []
 }
