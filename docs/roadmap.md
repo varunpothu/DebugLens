@@ -14,7 +14,7 @@
 - [x] Add a bounded process-local rate limiter for write/analysis endpoints with `429` and `Retry-After` responses
 - [x] Add a total request-size guard for `/v1/` write requests, including requests without a length header
 - [ ] Configure distributed gateway rate limits, trusted proxy handling, and per-tenant/provider cost quotas before public deployment
-- [x] Confirm the latest CI run passed on 2026-10-22 for commit `e6045cd2e1ac0a28196b9d3384199c47e6edc324` (worker hardening); CodeQL and dependency audit remain separate checks and must also pass before a release.
+- [x] Confirm CI, CodeQL, and dependency audit passed together on commit `6b794909145f306f632d98ad0dd11cee742960ad`; repeat checks against every release candidate.
 
 ## Phase 1: Multimodal analysis and model evaluation
 
@@ -30,7 +30,10 @@
 - [x] Add deterministic pattern-based text redaction before external provider calls (not screenshot OCR or comprehensive DLP)
 - [x] Deny external vision-provider image transfer by default unless an operator explicitly opts in; this is a consent gate, not OCR/DLP.
 - [ ] Add OCR-assisted screenshot redaction, adversarial obfuscation tests, and independent privacy review
-- [ ] Add retry budgets, provider rate limits, token/cost telemetry, and prompt-version tracking
+- [x] Add process-local per-provider request budgets with 429/Retry-After responses; these are not distributed quotas.
+- [ ] Add bounded retries, distributed provider quotas, persistent price-aware cost telemetry, and account-level budget enforcement
+- [x] Return provider response IDs and input/output token counts when supplied by the provider
+- [x] Version the vision prompt contract and expose its version in analysis responses; this is traceability metadata, not persistent prompt history
 
 ## Phase 2: Browser evidence
 
@@ -92,13 +95,12 @@
 - [ ] OpenTelemetry traces and redacted structured logs
 - [x] AWS monthly budget alerts at 50%, 80%, and 100% actual spend plus 100% forecast when an alert email is configured; alerts are not a hard spending cap
 - [x] CloudWatch bootstrap log group with 14-day retention and an EC2 CPU alarm for the optional host
-- [x] Cognito invite-only user pool with authenticator-app MFA and OAuth2 Proxy sign-in in the optional single-instance pilot
+- [x] Cognito invite-only user pool with required authenticator-app MFA and OAuth2 Proxy sign-in in the optional single-instance pilot
 - [ ] SLOs, dashboards, distributed quotas, provider cost attribution, and per-user audit attribution
 - [x] Optional cost-controlled EC2 Graviton pilot host with encrypted root volume, IMDSv2, no SSH ingress, SSM access, Caddy HTTPS, and Docker Compose
 - [x] Encrypted remote Terraform state backend configuration and Windows deployment runbook
 - [ ] ECS/Fargate, SQS, Step Functions approval callbacks, managed database, and isolated browser workers; these need a revised budget and threat-model review
 - [ ] GitHub OIDC deployment roles, automated releases, staging environment, rollback, and disaster recovery
 - [ ] Per-user application RBAC, tenant isolation, identity-to-audit attribution, backups and restore drills, and independent production security review
-- [ ] Authentication, authorisation, rate limits, tenant isolation, and a production security review
 
 The checked items are implemented in this repository. Unchecked items are planned and must not be represented as production-ready capabilities. The benchmark runner exists, but the repository does not yet include a sufficiently representative, independently labelled benchmark dataset.
