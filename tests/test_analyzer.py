@@ -58,3 +58,38 @@ def test_external_provider_requires_explicit_screenshot_transfer_opt_in(monkeypa
     )
     with pytest.raises(ProviderConsentRequired, match="screenshot pixels are not currently redacted"):
         analyse_screenshot(png_bytes(), "Test issue", provider="openai_compatible")
+
+
+def test_analysis_exposes_provider_usage_metadata(monkeypatch) -> None:
+    from app.services import analyzer
+
+    from app.config import Settings
+    from app.providers.base import ProviderResult
+
+    monkeypatch.setattr(analyzer, "get_settings", lambda: Settings(allow_unredacted_screenshots=True))
+    monkeypatch.setattr(
+        analyzer,
+        "_run_vision_provider",
+        lambda *args, **kwargs: ProviderResult(
+            provider="openai_compatible",
+            model="test-vision-model",
+            findings=[],
+            raw_response_id="response-test-123",
+            usage_input_tokens=321,
+            usage_output_tokens=45,
+        ),
+    )
+
+    result = analyse_screenshot(png_bytes(), "Synthetic test", provider="openai_compatible")
+
+    assert result.provider_response_id == "response-test-123"
+    assert result.provider_usage_input_tokens == 321
+    assert result.provider_usage_output_tokens == 45
+
+
+def test_mock_analysis_has_no_provider_usage_metadata() -> None:
+    result = analyse_screenshot(png_bytes(), "Synthetic test")
+
+    assert result.provider_response_id is None
+    assert result.provider_usage_input_tokens is None
+    assert result.provider_usage_output_tokens is None
