@@ -101,4 +101,5 @@ jobs:
           ANALYSIS_PROVIDER=mock
           VISION_API_KEY=
           EOF
-          docker compose --env-file "$RUNNER_TEMP/debuglens.env" -f deploy/compose.aws.yml config --quiet
+          docker compose --env-file "$RUNNER_TEMP/debuglens.env" -f deploy/compose.aws.yml config --format json > "$RUNNER_TEMP/compose.json"
+          python scripts/check_aws_compose.py "$RUNNER_TEMP/compose.json"
