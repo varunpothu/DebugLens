@@ -104,7 +104,7 @@ Do not echo, commit, or paste either value. Terraform stores the Cognito client 
 
 ## 5. Choose a DNS name before launching the host
 
-You need a domain name you control, for example debuglens.yourdomain.com. The domain must point to the EC2 public IP for Caddy to obtain a trusted TLS certificate. Do not use a domain you do not control.
+You need a domain name you control, for example debuglens.yourdomain.com. The domain must point to the EC2 public IP for Caddy to obtain a trusted TLS certificate. Do not use a domain you do not control. Launch the host only after this deployment branch has been merged to main, because the bootstrap script clones main.
 
 Set application_domain and enable the host only after the SSM secrets exist:
 
