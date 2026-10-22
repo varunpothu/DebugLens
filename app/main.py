@@ -55,6 +55,13 @@ logging.basicConfig(level=settings.log_level.upper())
 logger = logging.getLogger("debuglens")
 
 
+def _resolve_audit_actor(requested_actor: str) -> str:
+    """Trust request actor labels only in local development; use server identity elsewhere."""
+    if settings.app_env.strip().lower() in {"local", "development", "test"}:
+        return requested_actor
+    return settings.api_service_actor
+
+
 def validate_startup_configuration() -> None:
     """Fail closed outside local/test environments when the shared API token is weak or missing."""
     environment = settings.app_env.strip().lower()
@@ -318,7 +325,7 @@ def transition_debug_run(workflow_id: str, request: TransitionRequest) -> dict:
         return transition_run(
             workflow_id,
             target=target,
-            actor=request.actor,
+            actor=_resolve_audit_actor(request.actor),
             reason=request.reason,
         )
     except KeyError as exc:
@@ -400,7 +407,7 @@ async def collect_browser_evidence(
         pipeline = build_investigation_pipeline(run["analysis"], evidence)
         return attach_browser_evidence(
             workflow_id,
-            actor=request.actor,
+            actor=_resolve_audit_actor(request.actor),
             evidence=evidence,
             investigation_pipeline=pipeline,
         )
@@ -421,7 +428,7 @@ def propose_patch(workflow_id: str, request: PatchProposalRequest) -> dict:
             rationale=request.rationale,
             risk=request.risk,
             rollback_plan=request.rollback_plan,
-            actor=request.actor,
+            actor=_resolve_audit_actor(request.actor),
         )
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="Debugging run not found.") from exc
@@ -465,7 +472,7 @@ def generate_patch_suggestion(workflow_id: str, request: PatchSuggestionRequest)
             rationale=rationale,
             risk=suggestion.risk,
             rollback_plan=suggestion.rollback_plan,
-            actor=request.actor,
+            actor=_resolve_audit_actor(request.actor),
         )
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="Debugging run not found.") from exc
@@ -525,7 +532,7 @@ def submit_test_result(workflow_id: str, request: TestResultRequest) -> dict:
             outcome=request.outcome,
             command=request.command,
             summary=request.summary,
-            actor=request.actor,
+            actor=_resolve_audit_actor(request.actor),
         )
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="Debugging run not found.") from exc
