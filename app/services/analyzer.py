@@ -6,10 +6,18 @@ from PIL import Image, UnidentifiedImageError
 
 from app.config import get_settings
 from app.providers.base import ImageInput, ProviderResult, VisionProvider
+from app.providers.budget import ProviderCallBudget
 from app.redaction import redact_sensitive_text
 from app.providers.native_vision import AnthropicVisionProvider, GeminiVisionProvider
 from app.providers.openai_compatible import OpenAICompatibleVisionProvider
 from app.schemas import AnalysisResponse, Evidence, Finding, Severity
+
+
+_budget_settings = get_settings()
+provider_call_budget = ProviderCallBudget(
+    max_requests=_budget_settings.provider_rate_limit_requests,
+    window_seconds=_budget_settings.provider_rate_limit_window_seconds,
+)
 
 
 class InvalidImageError(ValueError):
@@ -86,6 +94,7 @@ def _run_vision_provider(
         )
     else:
         raise RuntimeError(f"Provider '{provider}' is not supported.")
+    provider_call_budget.check(provider)
     return adapter.analyse(image, bug_report)
 
 
