@@ -37,3 +37,16 @@ resource "aws_cloudwatch_log_group" "application" {
   retention_in_days = 14
   tags              = { Component = "application-logs" }
 }
+
+
+resource "aws_sns_topic" "backup_failure" {
+  name = "debuglens-backup-failure-${var.environment_name}"
+  tags = { Component = "backup-alerting" }
+}
+
+resource "aws_sns_topic_subscription" "backup_failure_email" {
+  count     = var.budget_alert_email == "" ? 0 : 1
+  topic_arn = aws_sns_topic.backup_failure.arn
+  protocol  = "email"
+  endpoint  = var.budget_alert_email
+}
