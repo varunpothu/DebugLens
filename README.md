@@ -62,7 +62,7 @@ Human verification and approval (no automatic patch application or deployment)
 - frontend/: optional Streamlit upload client.
 - docs/: architecture, agent workflow, threat model, evaluation, operations, isolated-worker contract, visual regression, accessibility, provider-input redaction, multi-model ensemble, labelled benchmarking, local data-retention, production-readiness guides, and roadmap.
 - runner/: allowlisted test worker, Docker orchestrator, Git-verified workspace provisioner, and durable local execution queue.
-- .github/workflows/: CI quality gates.
+- .github/workflows/: CI quality gates, CodeQL security analysis, and dependency auditing on `dev` and `main`.
 - examples/demo-ui/: intentionally broken and fixed synthetic storefront for reproducible demos.
 - Dockerfile and docker-compose.yml: local container setup.
 
