@@ -1,6 +1,6 @@
 resource "aws_cognito_user_pool" "team" {
-  name                = "debuglens-${var.environment_name}-team"
-  username_attributes = ["email"]
+  name                     = "debuglens-${var.environment_name}-team"
+  username_attributes      = ["email"]
   auto_verified_attributes = ["email"]
 
   admin_create_user_config {
