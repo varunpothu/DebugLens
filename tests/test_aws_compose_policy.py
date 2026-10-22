@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from scripts.check_aws_compose import validate_compose_config
+from app.deployment_policy import validate_compose_config
 
 
 def service(**overrides: Any) -> dict[str, Any]:
