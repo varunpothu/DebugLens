@@ -86,7 +86,8 @@
 - [x] Add a dry-run-first local SQLite retention CLI that only deletes old terminal workflows and their patch/test/execution child records
 - [x] Write an aggregate audit event for explicit retention runs
 - [x] Add consistent SQLite backup/restore CLI with integrity verification, SHA-256 output, restrictive file permissions, and no-overwrite restore defaults
-- [ ] Add scheduled encrypted off-host backups and tested recovery drills; extend deletion verification to S3 objects, backups, logs, provider-side copies, and container artifacts
+- [x] Configure daily encrypted off-host SQLite backups to a private S3 prefix with a separate retention window; verify in a live AWS account before relying on it
+- [ ] Perform restore drills and alert on backup failures; extend deletion verification to S3 objects, backups, logs, provider-side copies, and container artifacts
 - [ ] Add tenant-scoped deletion requests and legal-hold support before multi-user deployment
 
 ## Phase 5: Production operations and AWS
