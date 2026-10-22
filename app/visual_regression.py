@@ -145,7 +145,7 @@ def compare_screenshots(
     changed_pixels = changed_mask.histogram()[255]
     changed_ratio = changed_pixels / compared_pixels
     mean_absolute_error = sum(
-        ImageStat.Stat(channel, mask=comparison_mask).mean for channel in channels
+        sum(ImageStat.Stat(channel, mask=comparison_mask).mean) for channel in channels
     ) / (3 * 255)
 
     current_for_hash = current.copy()
