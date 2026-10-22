@@ -55,9 +55,14 @@ logger = logging.getLogger("debuglens")
 
 
 def validate_startup_configuration() -> None:
-    """Fail closed when production is configured with a missing or weak shared token."""
-    if settings.app_env.lower() in {"prod", "production"} and len(settings.api_access_token.strip()) < 32:
-        raise RuntimeError("API_ACCESS_TOKEN must contain at least 32 non-whitespace characters in production.")
+    """Fail closed outside local/test environments when the shared API token is weak or missing."""
+    environment = settings.app_env.strip().lower()
+    local_environments = {"local", "development", "test"}
+    if environment not in local_environments and len(settings.api_access_token.strip()) < 32:
+        raise RuntimeError(
+            "API_ACCESS_TOKEN must contain at least 32 non-whitespace characters "
+            "outside local/development/test environments."
+        )
 
 
 @asynccontextmanager
