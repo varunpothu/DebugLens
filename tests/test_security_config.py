@@ -27,3 +27,11 @@ def test_test_environment_allows_empty_token(monkeypatch) -> None:
     monkeypatch.setattr(main.settings, "app_env", "test")
     monkeypatch.setattr(main.settings, "api_access_token", "")
     main.validate_startup_configuration()
+
+
+
+def test_interactive_api_docs_are_enabled_only_for_local_environments() -> None:
+    for environment in ("local", "development", "test"):
+        assert main._docs_enabled_for_environment(environment) is True
+    for environment in ("staging", "production", "prod", "preview"):
+        assert main._docs_enabled_for_environment(environment) is False
