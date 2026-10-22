@@ -166,6 +166,15 @@ def test_patch_proposal_and_test_result_gate_verification() -> None:
     assert run["state"] == WorkflowState.VERIFIED.value
     assert run["test_reports"][0]["outcome"] == "passed"
     assert run["execution_reports"][0]["workspace_sha256"] == "b" * 64
+    approval = next(
+        event for event in run["events"]
+        if event.get("event_type") == "verification_approval_recorded"
+    )
+    assert approval["actor"] == "reviewer"
+    assert approval["patch_sha256"] == digest
+    assert approval["execution_report_id"] == run["execution_reports"][0]["report_id"]
+    assert approval["execution_suite"] == "pytest"
+    assert approval["workspace_sha256"] == "b" * 64
 
 
 def test_cannot_propose_patch_before_reproduction() -> None:

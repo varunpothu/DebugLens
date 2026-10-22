@@ -48,6 +48,7 @@
 - [x] Human-authored and provider-assisted patch proposals with digest, rationale, risk, and rollback plan
 - [x] Reviewer-reported test-result records tied to the exact patch digest
 - [x] Gate verification on a passing signed execution report for the current patch digest
+- [x] Record a verification audit event bound to the patch digest, trusted execution report ID, suite, and workspace digest
 - [x] Add a standalone allowlisted test-worker with timeout, output cap, and workspace snapshot digest
 - [x] Add a host-side Docker orchestrator and HMAC-signed execution-result API
 - [x] Persist execution suite, exit code, workspace digest, duration, and bounded logs
