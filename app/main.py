@@ -73,6 +73,11 @@ def validate_startup_configuration() -> None:
         )
 
 
+def _docs_enabled_for_environment(environment: str) -> bool:
+    """Expose interactive API documentation only in trusted local environments."""
+    return environment.strip().lower() in {"local", "development", "test"}
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     logger.info("DebugLens starting; provider=%s", settings.analysis_provider)
@@ -82,11 +87,15 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     logger.info("DebugLens shutting down")
 
 
+docs_enabled = _docs_enabled_for_environment(settings.app_env)
 app = FastAPI(
     title=settings.app_name,
     description="Evidence-first screenshot debugging and verification API.",
     version="0.1.0",
     lifespan=lifespan,
+    docs_url="/docs" if docs_enabled else None,
+    redoc_url="/redoc" if docs_enabled else None,
+    openapi_url="/openapi.json" if docs_enabled else None,
 )
 app.add_middleware(
     RequestBodyLimitMiddleware,
