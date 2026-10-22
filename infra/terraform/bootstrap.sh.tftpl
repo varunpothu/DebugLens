@@ -55,10 +55,10 @@ database_path="/data/debuglens.db"
 if [ -f /etc/debuglens/database-path ]; then
   database_path="$(cat /etc/debuglens/database-path)"
 fi
-case "$database_path" in
-  /data/*.db|/data/*.sqlite) ;;
-  *) echo "Database path must remain inside /data."; exit 1 ;;
-esac
+if [[ ! "$database_path" =~ ^/data/[A-Za-z0-9._-]+\.(db|sqlite)$ ]]; then
+  echo "Database path must be a simple .db or .sqlite filename directly inside /data."
+  exit 1
+fi
 
 if [[ -z "$domain" || -z "$issuer" || -z "$client_id" || -z "$client_secret" || -z "$api_token" || -z "$cookie_secret" ]]; then
   echo "Required DebugLens SSM parameters are missing; refusing to start the application."
