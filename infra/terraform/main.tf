@@ -71,8 +71,16 @@ resource "aws_s3_bucket_lifecycle_configuration" "artifacts" {
   rule {
     id     = "expire-debug-artifacts"
     status = "Enabled"
-    filter { prefix = "" }
+    filter { prefix = "artifacts/" }
     expiration { days = var.artifact_retention_days }
+    noncurrent_version_expiration { noncurrent_days = 7 }
+    abort_incomplete_multipart_upload { days_after_initiation = 2 }
+  }
+  rule {
+    id     = "expire-database-backups"
+    status = "Enabled"
+    filter { prefix = "backups/" }
+    expiration { days = var.database_backup_retention_days }
     noncurrent_version_expiration { noncurrent_days = 7 }
     abort_incomplete_multipart_upload { days_after_initiation = 2 }
   }
