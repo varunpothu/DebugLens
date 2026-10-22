@@ -85,6 +85,8 @@ jobs:
         run: |
           docker build -f Dockerfile -t debuglens-api:ci .
           docker build -f Dockerfile.ui -t debuglens-ui:ci .
+      - name: Validate bootstrap script syntax
+        run: bash -n infra/terraform/bootstrap.sh.tftpl
       - name: Validate private AWS Compose configuration
         shell: bash
         run: |
