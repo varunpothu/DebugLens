@@ -99,6 +99,10 @@ def test_provider_adapters_parse_structured_findings(monkeypatch, provider_name:
     result = provider.analyse(image_input(), "Button appears misaligned")
     assert result.provider == provider_name
     assert result.model == "test-vision-model"
-    assert result.prompt_version == "ui-investigator-v1"
+    assert result.prompt_version == {
+        "openai_compatible": "openai-compatible-ui-v1",
+        "anthropic": "anthropic-ui-v1",
+        "gemini": "gemini-ui-v1",
+    }[provider_name]
     assert len(result.findings) == 1
     assert result.findings[0].category == "layout"
