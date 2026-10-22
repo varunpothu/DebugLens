@@ -104,6 +104,7 @@ def analyse_screenshot(
     provider_response_id: str | None = None
     provider_usage_input_tokens: int | None = None
     provider_usage_output_tokens: int | None = None
+    prompt_version = "mock-baseline-1"
     if provider == "mock":
         findings = [
             Finding(
@@ -141,6 +142,7 @@ def analyse_screenshot(
         provider_response_id = result.raw_response_id
         provider_usage_input_tokens = result.usage_input_tokens
         provider_usage_output_tokens = result.usage_output_tokens
+        prompt_version = result.prompt_version or "unknown"
 
     plan = [
         "Confirm the expected behaviour and exact reproduction steps.",
@@ -159,6 +161,7 @@ def analyse_screenshot(
     return AnalysisResponse(
         provider=provider,
         provider_version=provider_version,
+        prompt_version=prompt_version,
         provider_response_id=provider_response_id,
         provider_usage_input_tokens=provider_usage_input_tokens,
         provider_usage_output_tokens=provider_usage_output_tokens,
