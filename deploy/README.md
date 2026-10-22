@@ -124,6 +124,20 @@ The app is protected by Cognito-backed OAuth2 Proxy. The API is internal to the 
 
 ## 7. Verify and operate
 
+The default provider is mock and external screenshot transfer is disabled. To enable a real vision provider, first review the provider's data-processing terms and obtain team approval. Store the API key as a SecureString in Systems Manager Parameter Store, using one of these names:
+
+- OpenAI-compatible provider: /debuglens/production/vision-api-key
+- Anthropic: /debuglens/production/anthropic-api-key
+- Gemini: /debuglens/production/gemini-api-key
+
+Then re-run Terraform with the intended provider and model, for example:
+
+~~~powershell
+terraform apply -var="aws_region=eu-west-2" -var="environment_name=production" -var="artifact_bucket_name=$ArtifactBucket" -var="budget_alert_email=YOUR_EMAIL_ADDRESS" -var="monthly_budget_usd=33" -var="application_domain=debuglens.yourdomain.com" -var="enable_application_host=true" -var="analysis_provider=openai_compatible" -var="vision_model=gpt-4o-mini" -var="allow_unredacted_screenshots=true"
+~~~
+
+This opt-in is global for the deployment, not a per-screenshot consent prompt. Enabling it means screenshots may be sent to the configured external provider. Keep it false unless the team has approved that transfer. After updating SSM secrets or configuration, use Systems Manager Session Manager to run sudo systemctl restart debuglens so the containers reload their environment. For Anthropic or Gemini, set analysis_provider to the matching name and configure that provider's model variable.
+
 - Check https://YOUR_DOMAIN/ and confirm unauthenticated visitors are redirected to Cognito sign-in.
 - Confirm an invited account can sign in and an uninvited account cannot create an account.
 - Confirm HTTP redirects to HTTPS and the browser certificate is trusted.
