@@ -134,6 +134,9 @@ resource "aws_iam_role_policy" "instance_runtime" {
           StringEquals = {
             "kms:ViaService" = "ssm.${var.aws_region}.amazonaws.com"
           }
+          StringLike = {
+            "kms:EncryptionContext:PARAMETER_ARN" = local.instance_parameter_arn
+          }
         }
       },
       {
