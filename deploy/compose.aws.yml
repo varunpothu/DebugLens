@@ -114,6 +114,7 @@ services:
     init: true
     mem_limit: 128m
     cpus: 0.25
+    pids_limit: 64
     ports:
       - "80:80"
       - "443:443"
