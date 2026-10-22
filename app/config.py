@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     vision_timeout_seconds: float = Field(default=45.0, ge=1.0, le=120.0)
     database_path: str = "./data/debuglens.db"
     api_access_token: str = ""
+    api_service_actor: str = Field(default="debuglens-service", min_length=1, max_length=120)
     allow_unredacted_screenshots: bool = False
     execution_signing_secret: str = ""
     browser_enabled: bool = False

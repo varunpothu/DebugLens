@@ -4,7 +4,7 @@
 
 ## Implemented local controls
 
-- API supports a configured shared bearer token; startup outside `local`, `development`, and `test` refuses tokens shorter than 32 non-whitespace characters.
+- API supports a configured shared bearer token; startup outside `local`, `development`, and `test` refuses tokens shorter than 32 non-whitespace characters. Non-local workflow audit events use the configured `API_SERVICE_ACTOR` rather than trusting actor labels supplied in request bodies.
 - The development Docker Compose port is bound to `127.0.0.1` so it is not published on every host interface; this is a local-development default, not a production ingress configuration. This is still not per-user identity, RBAC, or tenant isolation.
 - Uploads have content-type, byte-size, image-format, and pixel-count checks; an ASGI guard bounds complete `/v1/` write bodies even when chunked requests omit `Content-Length`, while the app guard rejects malformed or oversized declared lengths.
 - API responses add `nosniff`, frame-denial, no-referrer, and no-store headers, and correlation IDs are restricted to a short safe character set. The body guard does not replace streaming limits at a reverse proxy and does not independently cap chunked requests without `Content-Length`.
@@ -17,7 +17,7 @@
 - The isolated test worker uses a non-root user, read-only workspace, no network, dropped capabilities, no-new-privileges, and CPU/memory/PID/time/output bounds.
 - CI runs Ruff, pytest, mypy on Python 3.11 and 3.12 and exercises the worker container.
 
-These are partial safeguards. They do not provide multi-user identity, RBAC, tenant isolation, a distributed production-grade rate limiter, or a substitute for independent review.
+These are partial safeguards. `API_SERVICE_ACTOR` is a service identity, not a human identity provider; these controls do not provide per-user identity, RBAC, tenant isolation, a distributed production-grade rate limiter, or a substitute for independent review.
 
 ## Required before any public deployment
 
