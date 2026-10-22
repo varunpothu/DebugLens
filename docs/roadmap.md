@@ -14,7 +14,7 @@
 - [x] Add a bounded process-local rate limiter for write/analysis endpoints with `429` and `Retry-After` responses
 - [x] Add a total request-size guard for `/v1/` write requests, including requests without a length header
 - [ ] Configure distributed gateway rate limits, trusted proxy handling, and per-tenant/provider cost quotas before public deployment
-- [x] Confirm the latest CI run passed on 2026-10-22 for commit `e6045cd2e1ac0a28196b9d3384199c47e6edc324` (worker hardening); CodeQL and dependency audit remain separate checks and must also pass before a release.
+- [x] Confirm CI, CodeQL, and dependency audit passed together on commit `6b794909145f306f632d98ad0dd11cee742960ad`; repeat checks against every release candidate.
 
 ## Phase 1: Multimodal analysis and model evaluation
 
@@ -30,7 +30,9 @@
 - [x] Add deterministic pattern-based text redaction before external provider calls (not screenshot OCR or comprehensive DLP)
 - [x] Deny external vision-provider image transfer by default unless an operator explicitly opts in; this is a consent gate, not OCR/DLP.
 - [ ] Add OCR-assisted screenshot redaction, adversarial obfuscation tests, and independent privacy review
-- [ ] Add retry budgets, provider rate limits, token/cost telemetry, and prompt-version tracking
+- [ ] Add retry budgets, provider rate limits, persistent cost telemetry, and provider budget enforcement
+- [x] Return provider response IDs and input/output token counts when supplied by the provider
+- [x] Version the vision prompt contract and expose its version in analysis responses; this is traceability metadata, not persistent prompt history
 
 ## Phase 2: Browser evidence
 

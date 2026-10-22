@@ -10,6 +10,9 @@ from app.providers.base import ImageInput, ProviderResult
 from app.providers.openai_compatible import SYSTEM_PROMPT
 from app.schemas import Finding
 
+ANTHROPIC_PROMPT_VERSION = "anthropic-ui-v1"
+GEMINI_PROMPT_VERSION = "gemini-ui-v1"
+
 
 def _parse_findings(text: str) -> list[Finding]:
     payload = json.loads(text)
@@ -79,6 +82,7 @@ class AnthropicVisionProvider:
                 raw_response_id=body.get("id"),
                 usage_input_tokens=usage.get("input_tokens"),
                 usage_output_tokens=usage.get("output_tokens"),
+                prompt_version=ANTHROPIC_PROMPT_VERSION,
             )
         except (httpx.HTTPError, KeyError, TypeError, json.JSONDecodeError, ValidationError, ValueError) as exc:
             raise RuntimeError("Anthropic vision request failed or returned invalid structured output.") from exc
@@ -135,6 +139,7 @@ class GeminiVisionProvider:
                 raw_response_id=None,
                 usage_input_tokens=usage.get("promptTokenCount"),
                 usage_output_tokens=usage.get("candidatesTokenCount"),
+                prompt_version=GEMINI_PROMPT_VERSION,
             )
         except (httpx.HTTPError, KeyError, IndexError, TypeError, json.JSONDecodeError, ValidationError, ValueError) as exc:
             raise RuntimeError("Gemini vision request failed or returned invalid structured output.") from exc
