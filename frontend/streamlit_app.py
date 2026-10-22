@@ -1,6 +1,7 @@
 """Streamlit dashboard for durable DebugLens investigations and human review."""
 
 import json
+import os
 
 import requests
 import streamlit as st
@@ -9,10 +10,10 @@ st.set_page_config(page_title="DebugLens", page_icon="🔎", layout="wide")
 st.title("🔎 DebugLens")
 st.caption("Evidence-first UI debugging. Review every finding before acting on it.")
 
-api_url = st.sidebar.text_input("API base URL", "http://127.0.0.1:8000").rstrip("/")
-api_token = st.sidebar.text_input("API bearer token (optional)", type="password")
+api_url = st.sidebar.text_input("API base URL", os.getenv("DEBUGLENS_API_URL", "http://127.0.0.1:8000")).rstrip("/")
+api_token = st.sidebar.text_input("API bearer token (optional)", value=os.getenv("DEBUGLENS_API_TOKEN", ""), type="password")
 API_HEADERS = {"Authorization": f"Bearer {api_token}"} if api_token else {}
-st.sidebar.info("Use synthetic or redacted screenshots. The API is for trusted local development only.")
+st.sidebar.info("Use synthetic or redacted screenshots. External vision providers may receive screenshot content when explicitly configured and permitted.")
 if st.sidebar.button("Check API health"):
     try:
         response = requests.get(f"{api_url}/health", timeout=5)
