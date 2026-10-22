@@ -16,8 +16,11 @@ services:
       DATABASE_PATH: /data/debuglens.db
       VISION_API_KEY: ${VISION_API_KEY:-}
       VISION_MODEL: ${VISION_MODEL:-}
+      VISION_BASE_URL: ${VISION_BASE_URL:-https://api.openai.com/v1}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-3-5-sonnet-latest}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
       ALLOW_UNREDACTED_SCREENSHOTS: "false"
       BROWSER_ENABLED: "false"
       ALLOWED_ORIGINS: https://${DOMAIN_NAME}
