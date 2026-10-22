@@ -36,9 +36,16 @@ domain="$(parameter application-domain)"
 issuer="$(parameter cognito-issuer)"
 client_id="$(parameter cognito-client-id)"
 client_secret="$(parameter oauth-client-secret)"
+analysis_provider="$(parameter analysis-provider)"
+vision_model="$(parameter vision-model)"
+vision_base_url="$(parameter vision-base-url)"
+anthropic_model="$(parameter anthropic-model)"
+gemini_model="$(parameter gemini-model)"
 api_token="$(parameter api-access-token)"
 cookie_secret="$(parameter oauth-cookie-secret)"
 vision_key="$(parameter vision-api-key 2>/dev/null || true)"
+anthropic_key="$(parameter anthropic-api-key 2>/dev/null || true)"
+gemini_key="$(parameter gemini-api-key 2>/dev/null || true)"
 
 if [[ -z "$domain" || -z "$issuer" || -z "$client_id" || -z "$client_secret" || -z "$api_token" || -z "$cookie_secret" ]]; then
   echo "Required DebugLens SSM parameters are missing; refusing to start the application."
@@ -54,8 +61,14 @@ install -d -m 0700 /etc/debuglens
   printf 'API_ACCESS_TOKEN=%s\n' "$api_token"
   printf 'OAUTH2_PROXY_COOKIE_SECRET=%s\n' "$cookie_secret"
   printf 'AWS_REGION=%s\n' "$AWS_REGION"
-  printf 'ANALYSIS_PROVIDER=mock\n'
+  printf 'ANALYSIS_PROVIDER=%s\n' "$analysis_provider"
+  printf 'VISION_MODEL=%s\n' "$vision_model"
+  printf 'VISION_BASE_URL=%s\n' "$vision_base_url"
+  printf 'ANTHROPIC_MODEL=%s\n' "$anthropic_model"
+  printf 'GEMINI_MODEL=%s\n' "$gemini_model"
   printf 'VISION_API_KEY=%s\n' "$vision_key"
+  printf 'ANTHROPIC_API_KEY=%s\n' "$anthropic_key"
+  printf 'GEMINI_API_KEY=%s\n' "$gemini_key"
 } > /etc/debuglens/runtime.env
 chmod 0600 /etc/debuglens/runtime.env
 
