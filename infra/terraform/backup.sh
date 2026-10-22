@@ -20,7 +20,22 @@ cleanup() {
     rm -f "$backup_path" "$metadata_path"
   fi
 }
+on_error() {
+  local status=$?
+  local line="$1"
+  trap - ERR
+  echo "Backup failed with exit code $status at line $line."
+  if [[ -n "${DEBUGLENS_BACKUP_FAILURE_TOPIC_ARN:-}" && -n "${AWS_REGION:-}" ]]; then
+    aws sns publish \
+      --topic-arn "$DEBUGLENS_BACKUP_FAILURE_TOPIC_ARN" \
+      --subject "DebugLens SQLite backup failed" \
+      --message "The scheduled backup failed on $(hostname) at $(date -u +%Y-%m-%dT%H:%M:%SZ), exit code $status, script line $line. Check the DebugLens application CloudWatch log group." \
+      --region "$AWS_REGION" --output text >/dev/null || true
+  fi
+  exit "$status"
+}
 trap cleanup EXIT
+trap 'on_error "$LINENO"' ERR
 
 if [[ -z "${DEBUGLENS_BACKUP_BUCKET:-}" || -z "${DEBUGLENS_BACKUP_KMS_KEY_ARN:-}" || -z "${AWS_REGION:-}" ]]; then
   echo "Backup configuration is incomplete; refusing to upload."
