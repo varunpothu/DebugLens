@@ -60,3 +60,9 @@ output "database_backup_retention_days" {
   description = "Retention period for encrypted SQLite backups stored under the private backups/ prefix."
   value       = var.database_backup_retention_days
 }
+
+
+output "backup_failure_topic_arn" {
+  description = "SNS topic ARN for scheduled backup failure alerts; confirm the configured email subscription after apply."
+  value       = aws_sns_topic.backup_failure.arn
+}
