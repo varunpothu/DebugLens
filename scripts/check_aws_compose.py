@@ -33,8 +33,9 @@ def validate_compose_config(config: dict[str, Any]) -> list[str]:
             errors.append(f"Service '{name}' must not use host networking.")
         if not service.get("mem_limit") or not service.get("pids_limit"):
             errors.append(f"Service '{name}' must define memory and PID limits.")
-        networks = service.get("networks", {})
-        if "app" not in (networks.keys() if isinstance(networks, dict) else networks):
+        networks = service.get("networks") or {}
+        network_names = set(networks) if isinstance(networks, dict) else set(networks)
+        if "app" not in network_names:
             errors.append(f"Service '{name}' must use the private app network.")
 
     api = services.get("api", {})
@@ -74,6 +75,16 @@ def validate_compose_config(config: dict[str, Any]) -> list[str]:
             errors.append("The reverse proxy must drop all Linux capabilities.")
         if "NET_BIND_SERVICE" not in proxy.get("cap_add", []):
             errors.append("The reverse proxy may add only NET_BIND_SERVICE.")
+        if "no-new-privileges:true" not in proxy.get("security_opt", []):
+            errors.append("The reverse proxy must enable no-new-privileges.")
+        if proxy.get("privileged") is True or proxy.get("network_mode") == "host":
+            errors.append("The reverse proxy must not use privileged mode or host networking.")
+        if not proxy.get("mem_limit") or not proxy.get("pids_limit"):
+            errors.append("The reverse proxy must define memory and PID limits.")
+        proxy_networks = proxy.get("networks") or {}
+        proxy_network_names = set(proxy_networks) if isinstance(proxy_networks, dict) else set(proxy_networks)
+        if "app" not in proxy_network_names:
+            errors.append("The reverse proxy must use the app network.")
         ports = {
             (int(item.get("target", 0)), item.get("protocol", "tcp"))
             for item in proxy.get("ports", [])
