@@ -9,11 +9,12 @@
 - [x] API endpoints for creating runs, listing runs, reading a run, and recording legal transitions
 - [x] Unit, API, workflow, model-evaluation, provider-contract, and target-validation tests
 - [x] Threat model, architecture, evaluation criteria, and operations guidance
-- [x] CI pipeline for Python 3.11/3.12, Ruff, pytest, and mypy
+- [x] CI pipeline for Python 3.11/3.12, Ruff, pytest, mypy, isolated worker, and Terraform validation
+- [x] Run CI, CodeQL, and dependency audit on pushes and pull requests targeting both `dev` and `main`
 - [x] Add a bounded process-local rate limiter for write/analysis endpoints with `429` and `Retry-After` responses
 - [x] Add a total request-size guard for `/v1/` write requests, including requests without a length header
 - [ ] Configure distributed gateway rate limits, trusted proxy handling, and per-tenant/provider cost quotas before public deployment
-- [ ] Confirm CI passes on the latest commit before release
+- [x] Confirm CI, CodeQL, and dependency audit pass on the current main commit (`3d87e924`); repeat these checks before each release
 
 ## Phase 1: Multimodal analysis and model evaluation
 
