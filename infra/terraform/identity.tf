@@ -17,7 +17,7 @@ resource "aws_cognito_user_pool" "team" {
     password_history_size            = 5
   }
 
-  mfa_configuration = "OPTIONAL"
+  mfa_configuration = "ON"
   software_token_mfa_configuration {
     enabled = true
   }
