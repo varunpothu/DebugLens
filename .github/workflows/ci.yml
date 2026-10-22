@@ -75,3 +75,30 @@ jobs:
         run: docker run --rm -v "$RUNNER_TEMP/terraform:/workspace" -w /workspace hashicorp/terraform:1.10 init -backend=false -input=false
       - name: Validate Terraform configuration
         run: docker run --rm -v "$RUNNER_TEMP/terraform:/workspace" -w /workspace hashicorp/terraform:1.10 validate
+
+
+  aws-deployment-config:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build API and UI images
+        run: |
+          docker build -f Dockerfile -t debuglens-api:ci .
+          docker build -f Dockerfile.ui -t debuglens-ui:ci .
+      - name: Validate bootstrap script syntax
+        run: bash -n infra/terraform/bootstrap.sh.tftpl
+      - name: Validate private AWS Compose configuration
+        shell: bash
+        run: |
+          cat > "$RUNNER_TEMP/debuglens.env" <<'EOF'
+          DOMAIN_NAME=debuglens.example.com
+          COGNITO_ISSUER_URL=https://cognito-idp.eu-west-2.amazonaws.com/eu-west-2_example
+          COGNITO_CLIENT_ID=example-client-id
+          COGNITO_CLIENT_SECRET=example-client-secret
+          API_ACCESS_TOKEN=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+          OAUTH2_PROXY_COOKIE_SECRET=MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI=
+          AWS_REGION=eu-west-2
+          ANALYSIS_PROVIDER=mock
+          VISION_API_KEY=
+          EOF
+          docker compose --env-file "$RUNNER_TEMP/debuglens.env" -f deploy/compose.aws.yml config --quiet

@@ -93,9 +93,14 @@
 - [x] Private encrypted S3 artifact-storage Terraform baseline with KMS, public-access blocking, TLS-only policy, and lifecycle expiry
 - [x] Separate least-privilege API/worker ECS task-role policies scoped to S3 prefixes and KMS encryption context (roles are not attached to compute yet)
 - [ ] OpenTelemetry traces and redacted structured logs
-- [ ] SLOs, dashboards, alerts, quotas, provider budgets, and cost attribution
-- [ ] ECS/Fargate, SQS, Step Functions approval callbacks, Secrets Manager, and CloudWatch alarms
-- [ ] GitHub OIDC deployment roles, staging environment, rollback, and disaster recovery
-- [ ] Authentication, authorisation, rate limits, tenant isolation, and a production security review
+- [x] AWS monthly budget alerts at 50%, 80%, and 100% actual spend plus 100% forecast when an alert email is configured; alerts are not a hard spending cap
+- [x] CloudWatch bootstrap log group with 14-day retention and an EC2 CPU alarm for the optional host
+- [x] Cognito invite-only user pool with required authenticator-app MFA and OAuth2 Proxy sign-in in the optional single-instance pilot
+- [ ] SLOs, dashboards, distributed quotas, provider cost attribution, and per-user audit attribution
+- [x] Optional cost-controlled EC2 Graviton pilot host with encrypted root volume, IMDSv2, no SSH ingress, SSM access, Caddy HTTPS, and Docker Compose
+- [x] Encrypted remote Terraform state backend configuration and Windows deployment runbook
+- [ ] ECS/Fargate, SQS, Step Functions approval callbacks, managed database, and isolated browser workers; these need a revised budget and threat-model review
+- [ ] GitHub OIDC deployment roles, automated releases, staging environment, rollback, and disaster recovery
+- [ ] Per-user application RBAC, tenant isolation, identity-to-audit attribution, backups and restore drills, and independent production security review
 
 The checked items are implemented in this repository. Unchecked items are planned and must not be represented as production-ready capabilities. The benchmark runner exists, but the repository does not yet include a sufficiently representative, independently labelled benchmark dataset.
