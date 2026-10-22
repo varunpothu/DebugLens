@@ -8,10 +8,10 @@ from pydantic import ValidationError
 
 from app.providers.base import ImageInput, ProviderResult
 from app.providers.openai_compatible import SYSTEM_PROMPT
+from app.schemas import Finding
 
 ANTHROPIC_PROMPT_VERSION = "anthropic-ui-v1"
 GEMINI_PROMPT_VERSION = "gemini-ui-v1"
-from app.schemas import Finding
 
 
 def _parse_findings(text: str) -> list[Finding]:
