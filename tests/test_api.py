@@ -9,6 +9,7 @@ from PIL import Image
 
 from app import main
 from app.main import app
+from app.providers.budget import ProviderRateLimitError
 
 client = TestClient(app)
 
@@ -475,3 +476,19 @@ def test_api_rate_limits_write_requests(monkeypatch) -> None:
 
     # Liveness must remain available so an orchestrator can distinguish throttling from outage.
     assert client.get("/health").status_code == 200
+
+
+
+def test_analysis_returns_retry_after_when_provider_budget_is_exhausted(monkeypatch) -> None:
+    def rate_limited(*args, **kwargs):
+        raise ProviderRateLimitError("openai_compatible", 17)
+
+    monkeypatch.setattr(main, "analyse_screenshot", rate_limited)
+    response = client.post(
+        "/v1/analyses",
+        files={"screenshot": ("screen.png", png_bytes(), "image/png")},
+    )
+
+    assert response.status_code == 429
+    assert response.headers["Retry-After"] == "17"
+    assert response.json()["detail"] == "Provider request budget exhausted. Retry after the current window."
