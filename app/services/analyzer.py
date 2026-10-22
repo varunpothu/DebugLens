@@ -6,10 +6,18 @@ from PIL import Image, UnidentifiedImageError
 
 from app.config import get_settings
 from app.providers.base import ImageInput, ProviderResult, VisionProvider
+from app.providers.budget import ProviderCallBudget
 from app.redaction import redact_sensitive_text
 from app.providers.native_vision import AnthropicVisionProvider, GeminiVisionProvider
 from app.providers.openai_compatible import OpenAICompatibleVisionProvider
 from app.schemas import AnalysisResponse, Evidence, Finding, Severity
+
+
+_budget_settings = get_settings()
+provider_call_budget = ProviderCallBudget(
+    max_requests=_budget_settings.provider_rate_limit_requests,
+    window_seconds=_budget_settings.provider_rate_limit_window_seconds,
+)
 
 
 class InvalidImageError(ValueError):
@@ -86,6 +94,7 @@ def _run_vision_provider(
         )
     else:
         raise RuntimeError(f"Provider '{provider}' is not supported.")
+    provider_call_budget.check(provider)
     return adapter.analyse(image, bug_report)
 
 
@@ -101,6 +110,10 @@ def analyse_screenshot(
             "External vision providers are disabled until ALLOW_UNREDACTED_SCREENSHOTS=true; "
             "screenshot pixels are not currently redacted."
         )
+    provider_response_id: str | None = None
+    provider_usage_input_tokens: int | None = None
+    provider_usage_output_tokens: int | None = None
+    prompt_version = "mock-baseline-1"
     if provider == "mock":
         findings = [
             Finding(
@@ -135,6 +148,10 @@ def analyse_screenshot(
         )
         findings = result.findings
         provider_version = result.model
+        provider_response_id = result.raw_response_id
+        provider_usage_input_tokens = result.usage_input_tokens
+        provider_usage_output_tokens = result.usage_output_tokens
+        prompt_version = result.prompt_version or "unknown"
 
     plan = [
         "Confirm the expected behaviour and exact reproduction steps.",
@@ -153,6 +170,10 @@ def analyse_screenshot(
     return AnalysisResponse(
         provider=provider,
         provider_version=provider_version,
+        prompt_version=prompt_version,
+        provider_response_id=provider_response_id,
+        provider_usage_input_tokens=provider_usage_input_tokens,
+        provider_usage_output_tokens=provider_usage_output_tokens,
         screenshot_sha256=digest,
         screenshot_width=width,
         screenshot_height=height,
