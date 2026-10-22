@@ -453,3 +453,25 @@ def test_ensemble_endpoint_rejects_more_than_four_providers() -> None:
         data={"providers": "mock,openai_compatible,anthropic,gemini,mock2"},
     )
     assert response.status_code == 422
+
+
+def test_api_rate_limits_write_requests(monkeypatch) -> None:
+    from app.rate_limit import InMemoryRateLimiter
+
+    monkeypatch.setattr(main, "rate_limiter", InMemoryRateLimiter(max_requests=1, window_seconds=60))
+    first = client.post(
+        "/v1/analyses",
+        files={"screenshot": ("screen.png", png_bytes(), "image/png")},
+    )
+    assert first.status_code == 200
+
+    second = client.post(
+        "/v1/analyses",
+        files={"screenshot": ("screen.png", png_bytes(), "image/png")},
+    )
+    assert second.status_code == 429
+    assert second.headers["Retry-After"] == "60"
+    assert second.headers["X-Content-Type-Options"] == "nosniff"
+
+    # Liveness must remain available so an orchestrator can distinguish throttling from outage.
+    assert client.get("/health").status_code == 200
