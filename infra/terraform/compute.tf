@@ -177,7 +177,7 @@ resource "aws_instance" "app" {
     encrypted             = true
     volume_type           = "gp3"
     volume_size           = var.instance_root_volume_gb
-    delete_on_termination = false
+    delete_on_termination = true
   }
 
   credit_specification {
