@@ -7,13 +7,10 @@ body limit in public deployments as an additional control.
 from __future__ import annotations
 
 import re
-from collections.abc import Awaitable, Callable
 from uuid import uuid4
 
-ASGIMessage = dict[str, object]
-ASGIReceive = Callable[[], Awaitable[ASGIMessage]]
-ASGISend = Callable[[ASGIMessage], Awaitable[None]]
-ASGIApp = Callable[[dict[str, object], ASGIReceive, ASGISend], Awaitable[None]]
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
+
 _CORRELATION_ID = re.compile(r"^[A-Za-z0-9._-]{1,100}$")
 
 
@@ -26,7 +23,7 @@ class RequestBodyLimitMiddleware:
         self.app = app
         self.max_bytes = max_bytes
 
-    async def __call__(self, scope: dict[str, object], receive: ASGIReceive, send: ASGISend) -> None:
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if (
             scope.get("type") != "http"
             or scope.get("method") not in {"POST", "PUT", "PATCH"}
@@ -69,7 +66,7 @@ class RequestBodyLimitMiddleware:
         body_bytes = bytes(chunks)
         delivered = False
 
-        async def replay_receive() -> ASGIMessage:
+        async def replay_receive() -> Message:
             nonlocal delivered
             if not delivered:
                 delivered = True
@@ -78,7 +75,7 @@ class RequestBodyLimitMiddleware:
 
         await self.app(scope, replay_receive, send)
 
-    async def _reject(self, scope: dict[str, object], send: ASGISend) -> None:
+    async def _reject(self, scope: Scope, send: Send) -> None:
         raw_headers = dict(scope.get("headers", []))
         supplied_id = raw_headers.get(b"x-correlation-id", b"").decode("latin-1")
         correlation_id = supplied_id if _CORRELATION_ID.fullmatch(supplied_id) else str(uuid4())
