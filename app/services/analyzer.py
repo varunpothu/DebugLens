@@ -7,9 +7,17 @@ from PIL import Image, UnidentifiedImageError
 from app.config import get_settings
 from app.providers.base import ImageInput, ProviderResult, VisionProvider
 from app.redaction import redact_sensitive_text
+from app.providers.budget import ProviderCallBudget, ProviderRateLimitError
 from app.providers.native_vision import AnthropicVisionProvider, GeminiVisionProvider
 from app.providers.openai_compatible import OpenAICompatibleVisionProvider
 from app.schemas import AnalysisResponse, Evidence, Finding, Severity
+
+
+_provider_budget_settings = get_settings()
+provider_call_budget = ProviderCallBudget(
+    max_requests=_provider_budget_settings.provider_rate_limit_requests,
+    window_seconds=_provider_budget_settings.provider_rate_limit_window_seconds,
+)
 
 
 class InvalidImageError(ValueError):
@@ -86,6 +94,7 @@ def _run_vision_provider(
         )
     else:
         raise RuntimeError(f"Provider '{provider}' is not supported.")
+    provider_call_budget.check(provider)
     return adapter.analyse(image, bug_report)
 
 
@@ -101,6 +110,8 @@ def analyse_screenshot(
             "External vision providers are disabled until ALLOW_UNREDACTED_SCREENSHOTS=true; "
             "screenshot pixels are not currently redacted."
         )
+    usage_input_tokens: int | None = None
+    usage_output_tokens: int | None = None
     if provider == "mock":
         findings = [
             Finding(
@@ -135,6 +146,8 @@ def analyse_screenshot(
         )
         findings = result.findings
         provider_version = result.model
+        usage_input_tokens = result.usage_input_tokens
+        usage_output_tokens = result.usage_output_tokens
 
     plan = [
         "Confirm the expected behaviour and exact reproduction steps.",
@@ -153,6 +166,8 @@ def analyse_screenshot(
     return AnalysisResponse(
         provider=provider,
         provider_version=provider_version,
+        usage_input_tokens=usage_input_tokens,
+        usage_output_tokens=usage_output_tokens,
         screenshot_sha256=digest,
         screenshot_width=width,
         screenshot_height=height,
