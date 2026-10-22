@@ -157,6 +157,12 @@ resource "aws_iam_role_policy" "instance_runtime" {
         Action   = ["kms:Decrypt", "kms:Encrypt", "kms:GenerateDataKey"]
         Resource = [aws_kms_key.artifacts.arn]
         Condition = local.s3_kms_conditions
+      },
+      {
+        Sid      = "PublishBackupFailureAlerts"
+        Effect   = "Allow"
+        Action   = ["sns:Publish"]
+        Resource = [aws_sns_topic.backup_failure.arn]
       }
     ]
   })
@@ -181,6 +187,7 @@ resource "aws_instance" "app" {
     environment_name         = var.environment_name
     artifact_bucket_name     = aws_s3_bucket.artifacts.bucket
     artifact_kms_key_arn     = aws_kms_key.artifacts.arn
+    backup_failure_topic_arn = aws_sns_topic.backup_failure.arn
   })
   user_data_replace_on_change = false
 
