@@ -49,6 +49,7 @@ def test_analysis_response_preserves_provider_token_usage(monkeypatch: pytest.Mo
             provider="openai_compatible",
             model="example-model",
             findings=[finding],
+            prompt_version="openai-compatible-ui-v1",
             usage_input_tokens=123,
             usage_output_tokens=45,
         ),
@@ -56,6 +57,7 @@ def test_analysis_response_preserves_provider_token_usage(monkeypatch: pytest.Mo
 
     response = analyzer.analyse_screenshot(png_bytes(), "Check alignment", "openai_compatible")
 
+    assert response.prompt_version == "openai-compatible-ui-v1"
     assert response.usage_input_tokens == 123
     assert response.usage_output_tokens == 45
     assert response.provider_version == "example-model"
