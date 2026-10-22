@@ -11,7 +11,7 @@ This is a deliberately small, single-instance deployment target for a trusted te
 - All authenticated team members currently have the same application permissions. Per-user role-based authorization and per-user audit attribution still need a separate application change before sensitive or regulated team use.
 - The API and UI have no host-published ports. Caddy is the only public container entry point. SSH is not opened; use Systems Manager Session Manager.
 - The API defaults to mock analysis. External vision-provider access and browser capture remain disabled unless deliberately configured.
-- The app uses a local SQLite database on the EC2 root volume. This is a small pilot architecture, not high availability. Create and test backups before storing valuable records. Do not destroy the instance without exporting data.
+- The app uses a local SQLite database on the EC2 root volume. A daily encrypted S3 backup timer is configured for the optional host, with a separate `backups/` prefix and configurable 7–90 day retention. The schedule is inactive until the host is applied; verify the first successful upload and complete a restore drill before storing valuable records. This remains a single-instance pilot, not high availability.
 - Terraform state includes sensitive Cognito client metadata. Use the encrypted, versioned S3 backend described below before applying.
 
 ## 1. Prerequisites
