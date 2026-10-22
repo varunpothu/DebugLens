@@ -141,3 +141,10 @@ variable "gemini_model" {
   type        = string
   default     = "gemini-2.5-flash"
 }
+
+
+variable "allow_unredacted_screenshots" {
+  description = "Explicit global opt-in to send screenshots to external vision providers. Keep false unless the team approves this data transfer."
+  type        = bool
+  default     = false
+}
