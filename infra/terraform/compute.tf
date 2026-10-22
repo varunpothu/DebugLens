@@ -69,7 +69,7 @@ resource "aws_security_group" "app" {
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
-    cidr_blocks = local.app_ingress_cidrs
+    cidr_blocks = local.app_https_ingress_cidrs
   }
 
   ingress {
@@ -77,7 +77,7 @@ resource "aws_security_group" "app" {
     from_port   = 443
     to_port     = 443
     protocol    = "udp"
-    cidr_blocks = local.app_ingress_cidrs
+    cidr_blocks = local.app_https_ingress_cidrs
   }
 
   egress {
