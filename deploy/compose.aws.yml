@@ -13,7 +13,7 @@ services:
       ANALYSIS_PROVIDER: ${ANALYSIS_PROVIDER:-mock}
       API_ACCESS_TOKEN: ${API_ACCESS_TOKEN:?Set API_ACCESS_TOKEN in the protected SSM parameter store}
       API_SERVICE_ACTOR: debuglens-service
-      DATABASE_PATH: /data/debuglens.db
+      DATABASE_PATH: ${DATABASE_PATH:-/data/debuglens.db}
       VISION_API_KEY: ${VISION_API_KEY:-}
       VISION_MODEL: ${VISION_MODEL:-}
       VISION_BASE_URL: ${VISION_BASE_URL:-https://api.openai.com/v1}
