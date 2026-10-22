@@ -23,6 +23,7 @@ class ProviderRun:
     latency_ms: float
     model_version: str | None
     findings: list[dict[str, Any]]
+    prompt_version: str | None = None
     error_code: str | None = None
     usage_input_tokens: int | None = None
     usage_output_tokens: int | None = None
@@ -70,6 +71,7 @@ def compare_ensemble(
                     latency_ms=round((perf_counter() - started) * 1000, 2),
                     model_version=response.provider_version,
                     findings=[item.model_dump(mode="json") for item in response.findings],
+                    prompt_version=response.prompt_version,
                     usage_input_tokens=response.usage_input_tokens,
                     usage_output_tokens=response.usage_output_tokens,
                 )
