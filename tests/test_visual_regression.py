@@ -22,6 +22,8 @@ def test_identical_screenshots_have_zero_difference() -> None:
     assert report.changed_pixels == 0
     assert report.changed_ratio == 0.0
     assert report.mean_absolute_error == 0.0
+    assert report.perceptual_hash_distance == 0.0
+    assert report.masked_pixels == 0
     assert report.within_threshold is True
     assert report.difference_bounds is None
 
@@ -73,3 +75,46 @@ def test_invalid_and_oversized_images_are_rejected() -> None:
         compare_screenshots(b"not an image", b"not an image")
     with pytest.raises(VisualRegressionInputError, match="1 to 25 MiB"):
         compare_screenshots(b"", b"")
+
+
+
+def test_dynamic_region_mask_excludes_pixel_and_hash_differences() -> None:
+    baseline = Image.new("RGB", (16, 16), "white")
+    current = baseline.copy()
+    for x in range(4, 8):
+        for y in range(4, 8):
+            current.putpixel((x, y), (0, 0, 0))
+
+    report = compare_screenshots(
+        png_bytes(baseline),
+        png_bytes(current),
+        max_changed_ratio=0.0,
+        mask_regions=[(4, 4, 8, 8)],
+    )
+    assert report.changed_pixels == 0
+    assert report.masked_pixels == 16
+    assert report.total_pixels == 240
+    assert report.changed_ratio == 0.0
+    assert report.within_threshold is True
+    assert report.perceptual_hash_distance == 0.0
+
+
+@pytest.mark.parametrize(
+    "regions",
+    [
+        [(-1, 0, 2, 2)],
+        [(0, 0, 11, 2)],
+        [(2, 2, 2, 4)],
+        [(0, 0, 10, 10)],
+    ],
+)
+def test_invalid_or_full_image_masks_are_rejected(regions: list[tuple[int, int, int, int]]) -> None:
+    image = png_bytes(Image.new("RGB", (10, 10), "white"))
+    with pytest.raises(ValueError):
+        compare_screenshots(image, image, mask_regions=regions)
+
+
+def test_too_many_dynamic_regions_are_rejected() -> None:
+    image = png_bytes(Image.new("RGB", (10, 10), "white"))
+    with pytest.raises(ValueError, match="At most 100"):
+        compare_screenshots(image, image, mask_regions=[(0, 0, 1, 1)] * 101)
