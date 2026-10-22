@@ -106,3 +106,38 @@ variable "instance_root_volume_gb" {
     error_message = "Root volume must be between 12 and 40 GiB."
   }
 }
+
+
+variable "analysis_provider" {
+  description = "Vision provider to use in the deployed app. Mock is the safe default."
+  type        = string
+  default     = "mock"
+  validation {
+    condition     = contains(["mock", "openai_compatible", "anthropic", "gemini"], var.analysis_provider)
+    error_message = "analysis_provider must be mock, openai_compatible, anthropic, or gemini."
+  }
+}
+
+variable "vision_model" {
+  description = "Model identifier for the OpenAI-compatible provider."
+  type        = string
+  default     = "gpt-4o-mini"
+}
+
+variable "vision_base_url" {
+  description = "Base URL for the OpenAI-compatible provider."
+  type        = string
+  default     = "https://api.openai.com/v1"
+}
+
+variable "anthropic_model" {
+  description = "Model identifier for Anthropic vision."
+  type        = string
+  default     = "claude-3-5-sonnet-latest"
+}
+
+variable "gemini_model" {
+  description = "Model identifier for Gemini vision."
+  type        = string
+  default     = "gemini-2.5-flash"
+}
