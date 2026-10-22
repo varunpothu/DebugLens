@@ -56,7 +56,7 @@ install -d -m 0700 /etc/debuglens
 } > /etc/debuglens/runtime.env
 chmod 0600 /etc/debuglens/runtime.env
 
-docker compose \
+docker compose --parallel 1 \
   --project-directory /opt/debuglens \
   --env-file /etc/debuglens/runtime.env \
   -f /opt/debuglens/deploy/compose.aws.yml \
@@ -160,7 +160,7 @@ install -d -m 0700 /etc/debuglens
 } > /etc/debuglens/runtime.env
 chmod 0600 /etc/debuglens/runtime.env
 
-docker compose \
+docker compose --parallel 1 \
   --project-directory /opt/debuglens \
   --env-file /etc/debuglens/runtime.env \
   -f /opt/debuglens/deploy/compose.aws.yml \
