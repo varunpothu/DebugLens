@@ -23,6 +23,7 @@ class ProviderResult:
     raw_response_id: str | None = None
     usage_input_tokens: int | None = None
     usage_output_tokens: int | None = None
+    prompt_version: str | None = None
 
 
 class VisionProvider(Protocol):
