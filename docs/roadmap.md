@@ -14,7 +14,7 @@
 - [x] Add a bounded process-local rate limiter for write/analysis endpoints with `429` and `Retry-After` responses
 - [x] Add a total request-size guard for `/v1/` write requests, including requests without a length header
 - [ ] Configure distributed gateway rate limits, trusted proxy handling, and per-tenant/provider cost quotas before public deployment
-- [x] Confirm CI, CodeQL, and dependency audit passed together on commit `3d87e924`; repeat these checks against the latest commit before each release
+- [x] Confirm the latest CI run passed on 2026-10-22 for commit `e6045cd2e1ac0a28196b9d3384199c47e6edc324` (worker hardening); CodeQL and dependency audit remain separate checks and must also pass before a release.
 
 ## Phase 1: Multimodal analysis and model evaluation
 
