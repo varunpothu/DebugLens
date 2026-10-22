@@ -13,6 +13,7 @@ from time import perf_counter
 from typing import Any
 
 from app.services.analyzer import ProviderConsentRequired, analyse_screenshot
+from app.providers.budget import ProviderRateLimitError
 
 
 @dataclass(frozen=True, slots=True)
@@ -23,6 +24,9 @@ class ProviderRun:
     model_version: str | None
     findings: list[dict[str, Any]]
     error_code: str | None = None
+    usage_input_tokens: int | None = None
+    usage_output_tokens: int | None = None
+    retry_after_seconds: int | None = None
 
 
 def _normalise(value: str) -> str:
@@ -66,6 +70,20 @@ def compare_ensemble(
                     latency_ms=round((perf_counter() - started) * 1000, 2),
                     model_version=response.provider_version,
                     findings=[item.model_dump(mode="json") for item in response.findings],
+                    usage_input_tokens=response.usage_input_tokens,
+                    usage_output_tokens=response.usage_output_tokens,
+                )
+            )
+        except ProviderRateLimitError as exc:
+            runs.append(
+                ProviderRun(
+                    provider=provider,
+                    status="failed",
+                    latency_ms=round((perf_counter() - started) * 1000, 2),
+                    model_version=None,
+                    findings=[],
+                    error_code="provider_rate_limited",
+                    retry_after_seconds=exc.retry_after_seconds,
                 )
             )
         except ProviderConsentRequired:
