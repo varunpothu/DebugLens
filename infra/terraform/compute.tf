@@ -8,7 +8,7 @@ data "aws_ssm_parameter" "amazon_linux_2023_arm64" {
 
 locals {
   app_https_ingress_cidrs = length(var.allowed_ingress_cidrs) > 0 ? var.allowed_ingress_cidrs : ["0.0.0.0/0"]
-  instance_parameter_arn = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/debuglens/${var.environment_name}/*"
+  instance_parameter_arn  = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/debuglens/${var.environment_name}/*"
 }
 
 resource "aws_vpc" "app" {
