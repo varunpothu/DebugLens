@@ -27,7 +27,7 @@ These are partial safeguards. `API_SERVICE_ACTOR` is a service identity, not a h
 - [ ] Enforce server-derived actor identity and role-based permissions on every read and write.
 - [ ] Add tenant-scoped database queries and object-storage paths; test cross-tenant access denial.
 - [ ] Apply gateway-level request/body limits and distributed rate limits, including provider cost quotas.
-- [ ] Decide whether documentation and readiness endpoints should be private in the deployment environment.
+- [x] Disable interactive API documentation and OpenAPI schema routes outside local/development/test environments; readiness remains an operational endpoint and should be restricted at the ingress where appropriate.
 
 ### Data protection
 
