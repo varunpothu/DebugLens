@@ -6,7 +6,7 @@ services:
     cpus: 1.0
     pids_limit: 128
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     env_file:
       - .env
     environment:
