@@ -31,11 +31,12 @@ parameter() {
 domain="$(parameter application-domain)"
 issuer="$(parameter cognito-issuer)"
 client_id="$(parameter cognito-client-id)"
+client_secret="$(parameter oauth-client-secret)"
 api_token="$(parameter api-access-token)"
 cookie_secret="$(parameter oauth-cookie-secret)"
 vision_key="$(parameter vision-api-key 2>/dev/null || true)"
 
-if [[ -z "$domain" || -z "$issuer" || -z "$client_id" || -z "$api_token" || -z "$cookie_secret" ]]; then
+if [[ -z "$domain" || -z "$issuer" || -z "$client_id" || -z "$client_secret" || -z "$api_token" || -z "$cookie_secret" ]]; then
   echo "Required DebugLens SSM parameters are missing; refusing to start the application."
   exit 1
 fi
@@ -45,6 +46,7 @@ install -d -m 0700 /etc/debuglens
   printf 'DOMAIN_NAME=%s\n' "$domain"
   printf 'COGNITO_ISSUER_URL=%s\n' "$issuer"
   printf 'COGNITO_CLIENT_ID=%s\n' "$client_id"
+  printf 'COGNITO_CLIENT_SECRET=%s\n' "$client_secret"
   printf 'API_ACCESS_TOKEN=%s\n' "$api_token"
   printf 'OAUTH2_PROXY_COOKIE_SECRET=%s\n' "$cookie_secret"
   printf 'AWS_REGION=%s\n' "$AWS_REGION"
