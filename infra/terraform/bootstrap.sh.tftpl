@@ -51,6 +51,14 @@ cookie_secret="$(parameter oauth-cookie-secret)"
 vision_key="$(parameter vision-api-key 2>/dev/null || true)"
 anthropic_key="$(parameter anthropic-api-key 2>/dev/null || true)"
 gemini_key="$(parameter gemini-api-key 2>/dev/null || true)"
+database_path="/data/debuglens.db"
+if [ -f /etc/debuglens/database-path ]; then
+  database_path="$(cat /etc/debuglens/database-path)"
+fi
+case "$database_path" in
+  /data/*.db|/data/*.sqlite) ;;
+  *) echo "Database path must remain inside /data."; exit 1 ;;
+esac
 
 if [[ -z "$domain" || -z "$issuer" || -z "$client_id" || -z "$client_secret" || -z "$api_token" || -z "$cookie_secret" ]]; then
   echo "Required DebugLens SSM parameters are missing; refusing to start the application."
@@ -66,6 +74,7 @@ install -d -m 0700 /etc/debuglens
   printf 'API_ACCESS_TOKEN=%s\n' "$api_token"
   printf 'OAUTH2_PROXY_COOKIE_SECRET=%s\n' "$cookie_secret"
   printf 'AWS_REGION=%s\n' "$AWS_REGION"
+  printf 'DATABASE_PATH=%s\n' "$database_path"
   printf 'ANALYSIS_PROVIDER=%s\n' "$analysis_provider"
   printf 'ALLOW_UNREDACTED_SCREENSHOTS=%s\n' "$allow_unredacted"
   printf 'VISION_MODEL=%s\n' "$vision_model"
