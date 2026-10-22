@@ -34,14 +34,14 @@ The patch digest is calculated from the exact UTF-8 diff text. Any change to the
 
 ## Browser capture safety
 
-Set `BROWSER_ENABLED=true` and `BROWSER_ALLOWED_HOSTS=your-test-host.example` only in a disposable environment. The hostname list uses exact matches, not wildcard suffixes. The collector blocks non-allow-listed subresources and non-GET/HEAD requests. Application-level URL validation is not a complete SSRF defence: enforce DNS and network egress restrictions at the worker/container layer. Do not expose the browser endpoint publicly; the API does not yet provide authentication or tenant-level authorisation.
+Set `BROWSER_ENABLED=true` and `BROWSER_ALLOWED_HOSTS=your-test-host.example` only in a disposable environment. The hostname list uses exact matches, not wildcard suffixes. The collector blocks non-allow-listed subresources and non-GET/HEAD requests. Application-level URL validation is not a complete SSRF defence: enforce DNS and network egress restrictions at the worker/container layer. Browser capture is disabled by default and should remain unavailable to public users until a disposable browser worker and network-level egress controls are deployed. The API supports an optional shared bearer token, but this is not per-user authentication, role-based access control, or tenant-level authorisation.
 
 ## Persistence and deployment
 
 - Configure `DATABASE_PATH` to a writable path. The default is `./data/debuglens.db`.
 - SQLite is suitable for a single local process or a development demo. Use PostgreSQL with migrations, transaction isolation, and tenant-scoped access for multi-user deployment.
 - The run store retains screenshot digests and structured analysis, not original uploaded screenshot bytes.
-- This initial API is not yet authenticated. Do not expose it to the public internet or use it with confidential issues until authentication, authorisation, rate limits, and tenant isolation are implemented.
+- The API can require a shared bearer token, and non-local startup refuses a missing or weak token. This is a local access gate only: it does not provide per-user identity, role-based permissions, tenant isolation, or a distributed rate limiter. Do not expose the service to the public internet or use it with confidential issues until those controls, provider privacy review, and independent sandbox review are complete.
 
 ## Manual verification checklist
 
