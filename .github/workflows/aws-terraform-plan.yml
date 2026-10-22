@@ -1,0 +1,83 @@
+name: AWS Terraform Plan (host disabled)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: debuglens-terraform-plan
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    name: Plan AWS baseline only
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: aws-plan
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v7
+        with:
+          ref: main
+
+      - name: Validate required repository variables
+        shell: bash
+        env:
+          AWS_ROLE_ARN: ${{ vars.AWS_ROLE_ARN }}
+          TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+          BUDGET_ALERT_EMAIL: ${{ vars.BUDGET_ALERT_EMAIL }}
+        run: |
+          set -euo pipefail
+          test -n "$AWS_ROLE_ARN" || { echo "::error::Set repository variable AWS_ROLE_ARN after creating the restricted GitHub OIDC role."; exit 1; }
+          test -n "$TF_STATE_BUCKET" || { echo "::error::Set repository variable TF_STATE_BUCKET after creating the encrypted state bucket."; exit 1; }
+          test -n "$BUDGET_ALERT_EMAIL" || { echo "::error::Set repository variable BUDGET_ALERT_EMAIL to receive cost alerts."; exit 1; }
+
+      - name: Configure short-lived AWS credentials through OIDC
+        uses: aws-actions/configure-aws-credentials@v6.3.0
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: eu-west-2
+          role-session-name: DebugLensTerraformPlan
+
+      - name: Verify AWS identity
+        run: aws sts get-caller-identity
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: "1.10.5"
+          terraform_wrapper: false
+
+      - name: Initialise encrypted remote state
+        working-directory: infra/terraform
+        env:
+          TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+        run: |
+          terraform init -input=false \
+            -backend-config="bucket=$TF_STATE_BUCKET" \
+            -backend-config="key=debuglens/production/terraform.tfstate" \
+            -backend-config="region=eu-west-2" \
+            -backend-config="encrypt=true" \
+            -backend-config="use_lockfile=true"
+
+      - name: Validate Terraform
+        working-directory: infra/terraform
+        run: terraform validate
+
+      - name: Plan baseline with application host disabled
+        working-directory: infra/terraform
+        env:
+          BUDGET_ALERT_EMAIL: ${{ vars.BUDGET_ALERT_EMAIL }}
+        run: |
+          set -euo pipefail
+          ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
+          terraform plan -input=false -lock-timeout=5m -no-color \
+            -var="aws_region=eu-west-2" \
+            -var="environment_name=production" \
+            -var="artifact_bucket_name=debuglens-artifacts-$ACCOUNT_ID" \
+            -var="budget_alert_email=$BUDGET_ALERT_EMAIL" \
+            -var="monthly_budget_usd=33" \
+            -var="enable_application_host=false"
