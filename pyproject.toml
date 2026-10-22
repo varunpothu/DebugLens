@@ -24,7 +24,7 @@ dev = [
   "mypy>=1.11,<2.0",
   "types-Pillow",
 ]
-ui = ["streamlit>=1.39,<2.0", "requests>=2.32,<3.0"]
+ui = ["streamlit>=1.39,<2.0", "requests>=2.34.2,<3.0"]
 browser = ["playwright>=1.63.0,<2.0"]
 
 [tool.setuptools.packages.find]
