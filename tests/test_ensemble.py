@@ -4,6 +4,7 @@ import pytest
 from PIL import Image
 
 from app.ensemble import compare_ensemble
+from app.providers.budget import ProviderRateLimitError
 from app.schemas import AnalysisResponse, Evidence, Finding, Severity
 
 
@@ -100,3 +101,18 @@ def test_ensemble_distinguishes_privacy_consent_gate_from_provider_outage(monkey
     failed = next(item for item in report["provider_runs"] if item["provider"] == "anthropic")
     assert failed["error_code"] == "provider_consent_required"
     assert "leak" not in str(report)
+
+
+
+def test_ensemble_reports_provider_rate_limit_and_retry_after(monkeypatch) -> None:
+    def fake_analyse(image_bytes: bytes, bug_report: str | None, provider: str) -> AnalysisResponse:
+        raise ProviderRateLimitError(provider, 23)
+
+    monkeypatch.setattr("app.ensemble.analyse_screenshot", fake_analyse)
+    report = compare_ensemble(png_bytes(), None, ["openai_compatible"])
+    provider_run = report["provider_runs"][0]
+
+    assert provider_run["status"] == "failed"
+    assert provider_run["error_code"] == "provider_rate_limited"
+    assert provider_run["retry_after_seconds"] == 23
+    assert report["providers_failed"] == 1
