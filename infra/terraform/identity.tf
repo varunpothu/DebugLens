@@ -85,7 +85,7 @@ resource "aws_ssm_parameter" "application_domain" {
   name        = "/debuglens/${var.environment_name}/application-domain"
   description = "Public DNS name used by the DebugLens reverse proxy."
   type        = "String"
-  value       = var.application_domain
+  value       = var.application_domain == "" ? "not-configured.invalid" : var.application_domain
   overwrite   = true
 }
 
