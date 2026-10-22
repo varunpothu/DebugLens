@@ -75,6 +75,10 @@ def test_execute_uses_network_disabled_read_only_docker(monkeypatch: pytest.Monk
     assert result["outcome"] == "passed"
     assert "--network" in commands[0] and commands[0][commands[0].index("--network") + 1] == "none"
     assert "--read-only" in commands[0]
+    assert "--init" in commands[0]
+    assert commands[0][commands[0].index("--user") + 1] == "10001:10001"
+    assert commands[0][commands[0].index("--network") + 1] == "none"
+    assert commands[0][commands[0].index("--ulimit") + 1] == "nofile=1024:1024"
     assert "--name" in commands[0]
 
 
