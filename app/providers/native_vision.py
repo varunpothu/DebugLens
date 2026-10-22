@@ -77,6 +77,7 @@ class AnthropicVisionProvider:
                 model=self._model,
                 findings=findings,
                 raw_response_id=body.get("id"),
+                prompt_version="anthropic-ui-v1",
                 usage_input_tokens=usage.get("input_tokens"),
                 usage_output_tokens=usage.get("output_tokens"),
             )
@@ -133,6 +134,7 @@ class GeminiVisionProvider:
                 model=self._model,
                 findings=findings,
                 raw_response_id=None,
+                prompt_version="gemini-ui-v1",
                 usage_input_tokens=usage.get("promptTokenCount"),
                 usage_output_tokens=usage.get("candidatesTokenCount"),
             )
