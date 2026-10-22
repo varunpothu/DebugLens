@@ -68,7 +68,7 @@
 ## Phase 4: Verification and repair
 
 - [x] Deterministic screenshot baseline comparison with changed-pixel ratio, mean absolute error, and diff bounds
-- [ ] Add perceptual similarity metrics and approved dynamic-region masking
+- [x] Add a coarse difference-hash signal and validated dynamic-region masking; this is not a learned perceptual model
 - [x] Bounded static DOM accessibility heuristics for labels, names, headings, landmarks, duplicate IDs, and hidden focusables
 - [ ] Cross-viewport test matrix, keyboard/screen-reader checks, and full WCAG coverage
 - [x] Run approved suites in a network-disabled worker container with no secrets and resource limits
