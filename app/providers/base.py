@@ -21,6 +21,7 @@ class ProviderResult:
     model: str
     findings: list[Finding]
     raw_response_id: str | None = None
+    prompt_version: str | None = None
     usage_input_tokens: int | None = None
     usage_output_tokens: int | None = None
 
