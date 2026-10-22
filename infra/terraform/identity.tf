@@ -153,3 +153,12 @@ resource "aws_ssm_parameter" "gemini_model" {
   value       = var.gemini_model
   overwrite   = true
 }
+
+
+resource "aws_ssm_parameter" "allow_unredacted_screenshots" {
+  name        = "/debuglens/${var.environment_name}/allow-unredacted-screenshots"
+  description = "Explicit team opt-in for screenshot transfer to external vision providers."
+  type        = "String"
+  value       = tostring(var.allow_unredacted_screenshots)
+  overwrite   = true
+}
