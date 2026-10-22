@@ -127,6 +127,7 @@ UMask=0077
 Environment=AWS_REGION=${aws_region}
 Environment=DEBUGLENS_BACKUP_BUCKET=${artifact_bucket_name}
 Environment=DEBUGLENS_BACKUP_KMS_KEY_ARN=${artifact_kms_key_arn}
+Environment=DEBUGLENS_BACKUP_FAILURE_TOPIC_ARN=${backup_failure_topic_arn}
 ExecStart=/usr/local/sbin/debuglens-backup
 BACKUPSERVICE
 
