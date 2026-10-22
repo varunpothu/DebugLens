@@ -10,8 +10,13 @@ st.set_page_config(page_title="DebugLens", page_icon="🔎", layout="wide")
 st.title("🔎 DebugLens")
 st.caption("Evidence-first UI debugging. Review every finding before acting on it.")
 
-api_url = st.sidebar.text_input("API base URL", os.getenv("DEBUGLENS_API_URL", "http://127.0.0.1:8000")).rstrip("/")
-api_token = st.sidebar.text_input("API bearer token (optional)", value=os.getenv("DEBUGLENS_API_TOKEN", ""), type="password")
+if os.getenv("DEBUGLENS_LOCKED_CONFIG", "").strip().lower() == "true":
+    api_url = os.getenv("DEBUGLENS_API_URL", "http://api:8000").rstrip("/")
+    api_token = os.getenv("DEBUGLENS_API_TOKEN", "")
+    st.sidebar.caption("API connection is managed by the administrator.")
+else:
+    api_url = st.sidebar.text_input("API base URL", os.getenv("DEBUGLENS_API_URL", "http://127.0.0.1:8000")).rstrip("/")
+    api_token = st.sidebar.text_input("API bearer token (optional)", value=os.getenv("DEBUGLENS_API_TOKEN", ""), type="password")
 API_HEADERS = {"Authorization": f"Bearer {api_token}"} if api_token else {}
 st.sidebar.info("Use synthetic or redacted screenshots. External vision providers may receive screenshot content when explicitly configured and permitted.")
 if st.sidebar.button("Check API health"):
