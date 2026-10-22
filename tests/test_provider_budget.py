@@ -68,3 +68,34 @@ def test_mock_analysis_has_no_claimed_provider_usage() -> None:
 
     assert response.usage_input_tokens is None
     assert response.usage_output_tokens is None
+
+
+
+def test_analysis_enforces_budget_before_calling_provider(monkeypatch: pytest.MonkeyPatch) -> None:
+    settings = Settings(
+        allow_unredacted_screenshots=True,
+        vision_api_key="synthetic-test-key",
+        vision_model="synthetic-test-model",
+    )
+    monkeypatch.setattr(analyzer, "get_settings", lambda: settings)
+    monkeypatch.setattr(analyzer, "provider_call_budget", ProviderCallBudget(max_requests=1, window_seconds=60))
+
+    class FakeProvider:
+        def __init__(self, **kwargs) -> None:
+            self.kwargs = kwargs
+
+        def analyse(self, image, bug_report):
+            return ProviderResult(
+                provider="openai_compatible",
+                model="synthetic-test-model",
+                findings=[],
+                prompt_version="test-v1",
+                usage_input_tokens=1,
+                usage_output_tokens=1,
+            )
+
+    monkeypatch.setattr(analyzer, "OpenAICompatibleVisionProvider", FakeProvider)
+    analyzer.analyse_screenshot(png_bytes(), "synthetic issue", "openai_compatible")
+
+    with pytest.raises(ProviderRateLimitError):
+        analyzer.analyse_screenshot(png_bytes(), "synthetic issue", "openai_compatible")
