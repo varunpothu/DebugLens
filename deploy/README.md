@@ -7,7 +7,7 @@ This is a deliberately small, single-instance deployment target for a trusted te
 - No resources are created until you run Terraform. The enable_application_host setting defaults to false.
 - The AWS Budget is an alert, not a hard spending cap. AWS can continue charging after the threshold is reached. Review the AWS Billing console and set a card/billing alert as well.
 - The default budget is USD 33/month, an approximate alert equivalent to £25. Exchange rates, tax, AI-provider usage, network egress, and usage outside this stack can change the final bill.
-- Cognito allows administrator-created accounts only. Self-service sign-up is disabled. MFA via authenticator app is enabled as an option.
+- Cognito allows administrator-created accounts only. Self-service sign-up is disabled. Authenticator-app MFA is required.
 - All authenticated team members currently have the same application permissions. Per-user role-based authorization and per-user audit attribution still need a separate application change before sensitive or regulated team use.
 - The API and UI have no host-published ports. Caddy is the only public container entry point. SSH is not opened; use Systems Manager Session Manager.
 - The API defaults to mock analysis. External vision-provider access and browser capture remain disabled unless deliberately configured.
@@ -41,7 +41,26 @@ aws s3api put-bucket-versioning --bucket $StateBucket --region eu-west-2 --versi
 aws s3api put-bucket-encryption --bucket $StateBucket --region eu-west-2 --server-side-encryption-configuration '{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"}}]}'
 ~~~
 
-Apply an S3 bucket policy that denies requests where aws:SecureTransport is false, and restrict bucket access to the deployment IAM role before using this state bucket for team/production work. Do not make the state bucket public. The state may contain sensitive infrastructure values.
+Apply a TLS-only bucket policy before using this state bucket for team/production work. In PowerShell:
+
+~~~powershell
+$Policy = @{
+  Version = "2012-10-17"
+  Statement = @(@{
+    Sid = "DenyInsecureTransport"
+    Effect = "Deny"
+    Principal = "*"
+    Action = "s3:*"
+    Resource = @("arn:aws:s3:::$StateBucket", "arn:aws:s3:::$StateBucket/*")
+    Condition = @{ Bool = @{ "aws:SecureTransport" = "false" } }
+  })
+} | ConvertTo-Json -Depth 10
+$Policy | Set-Content -Path .\state-bucket-policy.json
+aws s3api put-bucket-policy --bucket $StateBucket --region eu-west-2 --policy file://state-bucket-policy.json
+Remove-Item .\state-bucket-policy.json
+~~~
+
+Restrict bucket access to the deployment IAM role before using this state bucket for team/production work. Do not make the state bucket public. The state may contain sensitive infrastructure values.
 
 Initialise the backend:
 
