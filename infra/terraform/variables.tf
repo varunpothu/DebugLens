@@ -50,7 +50,7 @@ variable "monthly_budget_usd" {
   type        = string
   default     = "33"
   validation {
-    condition     = can(regex("^[0-9]+(\\.[0-9]{1,2})?$", var.monthly_budget_usd)) && tonumber(var.monthly_budget_usd) >= 1
+    condition     = can(regex("^[0-9]+(\\.[0-9]{1,2})?$", var.monthly_budget_usd)) && can(tonumber(var.monthly_budget_usd) >= 1)
     error_message = "Monthly budget must be a positive USD amount."
   }
 }
