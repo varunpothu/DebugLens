@@ -70,7 +70,7 @@ class FakeClient:
 def test_provider_adapters_parse_structured_findings(monkeypatch, provider_name: str) -> None:
     payload_text = json.dumps(finding_payload())
     if provider_name == "openai_compatible":
-        body = {"id": "response-1", "choices": [{"message": {"content": payload_text}}], "usage": {}}
+        body = {"id": "response-1", "choices": [{"message": {"content": payload_text}}], "usage": {"prompt_tokens": 12, "completion_tokens": 4}}
         monkeypatch.setattr(
             "app.providers.openai_compatible.httpx.Client",
             lambda timeout: FakeClient(timeout=timeout, body=body),
@@ -79,7 +79,7 @@ def test_provider_adapters_parse_structured_findings(monkeypatch, provider_name:
             api_key="test-key", model="test-vision-model", base_url="https://example.test/v1"
         )
     elif provider_name == "anthropic":
-        body = {"id": "message-1", "content": [{"type": "text", "text": payload_text}], "usage": {}}
+        body = {"id": "message-1", "content": [{"type": "text", "text": payload_text}], "usage": {"input_tokens": 12, "output_tokens": 4}}
         monkeypatch.setattr(
             "app.providers.native_vision.httpx.Client",
             lambda timeout: FakeClient(timeout=timeout, body=body),
@@ -88,7 +88,7 @@ def test_provider_adapters_parse_structured_findings(monkeypatch, provider_name:
     else:
         body = {
             "candidates": [{"content": {"parts": [{"text": payload_text}]}}],
-            "usageMetadata": {},
+            "usageMetadata": {"promptTokenCount": 12, "candidatesTokenCount": 4},
         }
         monkeypatch.setattr(
             "app.providers.native_vision.httpx.Client",
@@ -101,3 +101,6 @@ def test_provider_adapters_parse_structured_findings(monkeypatch, provider_name:
     assert result.model == "test-vision-model"
     assert len(result.findings) == 1
     assert result.findings[0].category == "layout"
+    assert result.prompt_version is not None
+    assert result.usage_input_tokens == 12
+    assert result.usage_output_tokens == 4
