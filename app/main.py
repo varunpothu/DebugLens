@@ -43,6 +43,7 @@ from app.workflow import WorkflowState
 from app.browser.capture import UnsafeTargetError, capture_page
 from app.services.analyzer import InvalidImageError, ProviderConsentRequired, analyse_screenshot
 from app.patch_suggester import suggest_patch
+from app.rate_limit import InMemoryRateLimiter
 
 settings = get_settings()
 logging.basicConfig(level=settings.log_level.upper())
