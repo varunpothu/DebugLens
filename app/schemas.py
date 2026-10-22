@@ -42,6 +42,7 @@ class AnalysisResponse(BaseModel):
     status: str = "completed"
     provider: str
     provider_version: str
+    prompt_version: str | None = Field(default=None, max_length=80)
     usage_input_tokens: int | None = Field(default=None, ge=0)
     usage_output_tokens: int | None = Field(default=None, ge=0)
     screenshot_sha256: str
