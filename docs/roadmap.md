@@ -11,6 +11,7 @@
 - [x] Threat model, architecture, evaluation criteria, and operations guidance
 - [x] CI pipeline for Python 3.11/3.12, Ruff, pytest, and mypy
 - [x] Add a bounded process-local rate limiter for write/analysis endpoints with `429` and `Retry-After` responses
+- [x] Add a total request-size guard for `/v1/` write requests, including requests without a length header
 - [ ] Configure distributed gateway rate limits, trusted proxy handling, and per-tenant/provider cost quotas before public deployment
 - [ ] Confirm CI passes on the latest commit before release
 
