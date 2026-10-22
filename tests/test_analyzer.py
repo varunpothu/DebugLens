@@ -77,6 +77,7 @@ def test_analysis_exposes_provider_usage_metadata(monkeypatch) -> None:
             raw_response_id="response-test-123",
             usage_input_tokens=321,
             usage_output_tokens=45,
+            prompt_version="ui-investigator-v1",
         ),
     )
 
