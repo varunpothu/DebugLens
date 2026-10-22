@@ -38,7 +38,7 @@ The CI workflow runs Terraform 1.10 and initialises without a backend. For a loc
 
 ## Safe rollout
 
-1. Set a real budget alert email and create the state bucket.
+1. Set a real budget alert email and create the state bucket. The email is also used for backup-failure SNS alerts; confirm the SNS subscription after applying.
 2. Apply with enable_application_host=false to create the budget, artifact bucket, and Cognito identity configuration without an EC2 host.
 3. Create the API token and OAuth cookie secret directly in SSM as SecureString values; never paste them into chat or source control.
 4. Set application_domain to a domain you control and enable the host only after secrets exist.
@@ -49,4 +49,4 @@ The CI workflow runs Terraform 1.10 and initialises without a backend. For a loc
 
 The default alert is USD 33/month, an approximate £25 target rather than a guaranteed bill. Actual charges vary by region, exchange rates, tax, public IPv4, storage, transfer, logs, and provider API usage. No AWS service in this module can guarantee a hard cost ceiling. Monitor the first week closely.
 
-This is a single-instance pilot with local SQLite storage. Daily encrypted S3 backups are configured for the optional host and retained according to database_backup_retention_days, but they will not run until you apply the host resources. Verify the first successful upload and perform a restore drill before relying on them. The pilot is not highly available and still lacks per-user application RBAC, per-user audit attribution, automated deployment via GitHub OIDC, distributed rate limits, backup-failure alerting, and an independent production security review. Do not use it for regulated or highly sensitive screenshots until those controls are complete.
+This is a single-instance pilot with local SQLite storage. Daily encrypted S3 backups are configured for the optional host and retained according to database_backup_retention_days, with SNS email alerts on failures when the configured subscription is confirmed. Backups will not run until you apply the host resources. Verify the first successful upload and perform a restore drill before relying on them. The pilot is not highly available and still lacks per-user application RBAC, per-user audit attribution, automated deployment via GitHub OIDC, distributed rate limits, backup-failure alerting, and an independent production security review. Do not use it for regulated or highly sensitive screenshots until those controls are complete.
