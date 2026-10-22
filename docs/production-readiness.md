@@ -14,7 +14,7 @@
 - External vision-provider image transfer is denied by default because screenshot pixels are not redacted; the operator must explicitly set `ALLOW_UNREDACTED_SCREENSHOTS=true` to opt in. This is not a substitute for OCR redaction or privacy review.
 - Browser capture is disabled by default, requires an exact hostname allow-list, and is blocked outside local/development/test until an isolated browser worker is deployed.
 - Proposed patches remain review-only; test reports are bound to patch/workspace digests.
-- The isolated test worker uses a non-root user, read-only workspace, no network, dropped capabilities, no-new-privileges, and CPU/memory/PID/time/output bounds.
+- The isolated test worker uses a non-root user (UID/GID 10001:10001 explicitly enforced by the host orchestrator), read-only workspace, no network, dropped capabilities, no-new-privileges, a Docker init process for child reaping, an open-file-descriptor limit, and CPU/memory/PID/time/output bounds.
 - CI runs Ruff, pytest, mypy on Python 3.11 and 3.12 and exercises the worker container.
 
 These are partial safeguards. `API_SERVICE_ACTOR` is a service identity, not a human identity provider; these controls do not provide per-user identity, RBAC, tenant isolation, a distributed production-grade rate limiter, or a substitute for independent review.
