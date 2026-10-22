@@ -43,8 +43,13 @@ from app.workflow import WorkflowState
 from app.browser.capture import UnsafeTargetError, capture_page
 from app.services.analyzer import InvalidImageError, ProviderConsentRequired, analyse_screenshot
 from app.patch_suggester import suggest_patch
+from app.rate_limit import InMemoryRateLimiter
 
 settings = get_settings()
+rate_limiter = InMemoryRateLimiter(
+    max_requests=settings.api_rate_limit_requests,
+    window_seconds=settings.api_rate_limit_window_seconds,
+)
 logging.basicConfig(level=settings.log_level.upper())
 logger = logging.getLogger("debuglens")
 
@@ -115,6 +120,22 @@ async def require_api_token(request: Request, call_next: RequestResponseEndpoint
         expected = f"Bearer {settings.api_access_token}"
         if not hmac.compare_digest(supplied, expected):
             return JSONResponse(status_code=401, content={"detail": "Valid bearer token required."})
+    return await call_next(request)
+
+
+@app.middleware("http")
+async def rate_limit_api_writes(request: Request, call_next: RequestResponseEndpoint) -> Response:
+    """Bound write/analysis request bursts per client in this process."""
+    if request.method == "POST" and request.url.path.startswith("/v1/"):
+        client_key = request.client.host if request.client is not None else "unknown"
+        allowed, retry_after = rate_limiter.check(client_key)
+        if not allowed:
+            response = JSONResponse(
+                status_code=429,
+                content={"detail": "Too many API requests. Retry after the current rate-limit window."},
+                headers={"Retry-After": str(retry_after)},
+            )
+            return _apply_response_headers(response, request)
     return await call_next(request)
 
 

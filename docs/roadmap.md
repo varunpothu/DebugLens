@@ -10,6 +10,8 @@
 - [x] Unit, API, workflow, model-evaluation, provider-contract, and target-validation tests
 - [x] Threat model, architecture, evaluation criteria, and operations guidance
 - [x] CI pipeline for Python 3.11/3.12, Ruff, pytest, and mypy
+- [x] Add a bounded process-local rate limiter for write/analysis endpoints with `429` and `Retry-After` responses
+- [ ] Configure distributed gateway rate limits, trusted proxy handling, and per-tenant/provider cost quotas before public deployment
 - [ ] Confirm CI passes on the latest commit before release
 
 ## Phase 1: Multimodal analysis and model evaluation
