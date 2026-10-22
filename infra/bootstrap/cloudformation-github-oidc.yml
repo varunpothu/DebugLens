@@ -1,0 +1,155 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  DebugLens bootstrap for cloud-only Terraform planning. Creates a private
+  encrypted/versioned Terraform state bucket and a GitHub OIDC role that is
+  read-only for AWS resources and can write only its Terraform state/lockfile.
+
+Parameters:
+  GitHubRepository:
+    Type: String
+    Default: varunpothu/DebugLens
+    AllowedPattern: "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+    Description: Owner/repository allowed to request the GitHub OIDC role.
+  GitHubEnvironment:
+    Type: String
+    Default: aws-plan
+    AllowedPattern: "^[A-Za-z0-9_-]+$"
+    Description: GitHub Environment name; protect it so only main can deploy.
+  ExistingGitHubOIDCProviderArn:
+    Type: String
+    Default: ""
+    Description: >-
+      Optional existing IAM OIDC provider ARN for token.actions.githubusercontent.com.
+      Leave blank to create the provider. If the provider already exists in this
+      AWS account, supply its ARN to avoid a duplicate-provider error.
+
+Conditions:
+  CreateGitHubOIDCProvider: !Equals [!Ref ExistingGitHubOIDCProviderArn, ""]
+
+Resources:
+  TerraformStateBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Sub "debuglens-tfstate-${AWS::AccountId}-eu-west-2"
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      Tags:
+        - Key: Project
+          Value: DebugLens
+        - Key: Purpose
+          Value: TerraformState
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W51
+            reason: State access is granted through the restricted IAM role; public access is blocked.
+
+  TerraformStateBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref TerraformStateBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: "*"
+            Action: "s3:*"
+            Resource:
+              - !GetAtt TerraformStateBucket.Arn
+              - !Sub "${TerraformStateBucket.Arn}/*"
+            Condition:
+              Bool:
+                aws:SecureTransport: "false"
+
+  GitHubOIDCProvider:
+    Type: AWS::IAM::OIDCProvider
+    Condition: CreateGitHubOIDCProvider
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList:
+        - sts.amazonaws.com
+      ThumbprintList:
+        - 6938fd4d98bab03faadb97b34396831e3780aea1
+      Tags:
+        - Key: Project
+          Value: DebugLens
+
+  GitHubTerraformPlanRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "debuglens-github-terraform-plan-${AWS::AccountId}"
+      Description: >-
+        Read-only AWS inspection for DebugLens Terraform plan; may write only
+        the encrypted remote state object and lockfile.
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: GitHubActionsOIDCOnly
+            Effect: Allow
+            Principal:
+              Federated: !If
+                - CreateGitHubOIDCProvider
+                - !Ref GitHubOIDCProvider
+                - !Ref ExistingGitHubOIDCProviderArn
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+                token.actions.githubusercontent.com:sub: !Sub "repo:${GitHubRepository}:environment:${GitHubEnvironment}"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/ReadOnlyAccess
+      Policies:
+        - PolicyName: TerraformRemoteStateOnly
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: ListOnlyTerraformStatePrefix
+                Effect: Allow
+                Action: s3:ListBucket
+                Resource: !GetAtt TerraformStateBucket.Arn
+                Condition:
+                  StringLike:
+                    s3:prefix:
+                      - debuglens/production/terraform.tfstate
+                      - debuglens/production/terraform.tfstate.tflock
+              - Sid: ReadWriteOnlyStateAndLock
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                Resource:
+                  - !Sub "${TerraformStateBucket.Arn}/debuglens/production/terraform.tfstate"
+                  - !Sub "${TerraformStateBucket.Arn}/debuglens/production/terraform.tfstate.tflock"
+      Tags:
+        - Key: Project
+          Value: DebugLens
+        - Key: Purpose
+          Value: TerraformPlanOnly
+
+Outputs:
+  TerraformStateBucketName:
+    Description: Set this as the GitHub repository variable TF_STATE_BUCKET.
+    Value: !Ref TerraformStateBucket
+  GitHubTerraformPlanRoleArn:
+    Description: Set this as the GitHub repository variable AWS_ROLE_ARN.
+    Value: !GetAtt GitHubTerraformPlanRole.Arn
+  GitHubEnvironmentName:
+    Description: Create this GitHub Environment and restrict it to main.
+    Value: !Ref GitHubEnvironment
