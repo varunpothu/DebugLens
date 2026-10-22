@@ -112,3 +112,44 @@ resource "aws_ssm_parameter" "cognito_client_secret" {
   value       = aws_cognito_user_pool_client.team.client_secret
   overwrite   = true
 }
+
+
+resource "aws_ssm_parameter" "analysis_provider" {
+  name        = "/debuglens/${var.environment_name}/analysis-provider"
+  description = "Selected vision provider; mock is the safe default."
+  type        = "String"
+  value       = var.analysis_provider
+  overwrite   = true
+}
+
+resource "aws_ssm_parameter" "vision_model" {
+  name        = "/debuglens/${var.environment_name}/vision-model"
+  description = "Model identifier for the OpenAI-compatible provider."
+  type        = "String"
+  value       = var.vision_model
+  overwrite   = true
+}
+
+resource "aws_ssm_parameter" "vision_base_url" {
+  name        = "/debuglens/${var.environment_name}/vision-base-url"
+  description = "Base URL for the OpenAI-compatible provider."
+  type        = "String"
+  value       = var.vision_base_url
+  overwrite   = true
+}
+
+resource "aws_ssm_parameter" "anthropic_model" {
+  name        = "/debuglens/${var.environment_name}/anthropic-model"
+  description = "Model identifier for Anthropic vision."
+  type        = "String"
+  value       = var.anthropic_model
+  overwrite   = true
+}
+
+resource "aws_ssm_parameter" "gemini_model" {
+  name        = "/debuglens/${var.environment_name}/gemini-model"
+  description = "Model identifier for Gemini vision."
+  type        = "String"
+  value       = var.gemini_model
+  overwrite   = true
+}
