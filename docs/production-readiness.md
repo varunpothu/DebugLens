@@ -7,6 +7,7 @@
 - API supports a configured shared bearer token; production startup refuses tokens shorter than 32 non-whitespace characters. This is still not per-user identity, RBAC, or tenant isolation.
 - Uploads have content-type, byte-size, image-format, and pixel-count checks; an app-level guard rejects oversized declared `Content-Length` bodies.
 - API responses add `nosniff`, frame-denial, no-referrer, and no-store headers, and correlation IDs are restricted to a short safe character set. The body guard does not replace streaming limits at a reverse proxy and does not independently cap chunked requests without `Content-Length`.
+- Write/analysis POST endpoints use a bounded, thread-safe process-local fixed-window limiter with `429` and `Retry-After`; it is a local guardrail, not a shared limiter across processes or hosts.
 - A dry-run-first CLI can delete old terminal workflows and related local SQLite records, with an aggregate retention audit event. It does not delete S3 objects, backups, logs, provider-side copies, or containers.
 - Common sensitive text patterns are redacted before outbound vision-provider calls.
 - External vision-provider image transfer is denied by default because screenshot pixels are not redacted; the operator must explicitly set `ALLOW_UNREDACTED_SCREENSHOTS=true` to opt in. This is not a substitute for OCR redaction or privacy review.
@@ -15,7 +16,7 @@
 - The isolated test worker uses a non-root user, read-only workspace, no network, dropped capabilities, no-new-privileges, and CPU/memory/PID/time/output bounds.
 - CI runs Ruff, pytest, mypy on Python 3.11 and 3.12 and exercises the worker container.
 
-These are partial safeguards. They do not provide multi-user identity, RBAC, tenant isolation, a production-grade rate limiter, or a substitute for independent review.
+These are partial safeguards. They do not provide multi-user identity, RBAC, tenant isolation, a distributed production-grade rate limiter, or a substitute for independent review.
 
 ## Required before any public deployment
 
