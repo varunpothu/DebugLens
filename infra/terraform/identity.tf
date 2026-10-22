@@ -47,7 +47,7 @@ resource "aws_cognito_user_pool_client" "team" {
   name         = "debuglens-private-web"
   user_pool_id = aws_cognito_user_pool.team.id
 
-  generate_secret                      = false
+  generate_secret                      = true
   allowed_oauth_flows_user_pool_client = true
   allowed_oauth_flows                  = ["code"]
   allowed_oauth_scopes                 = ["openid", "email", "profile"]
@@ -102,5 +102,13 @@ resource "aws_ssm_parameter" "cognito_client_id" {
   description = "Public Cognito OAuth client ID for the private team web app."
   type        = "String"
   value       = aws_cognito_user_pool_client.team.id
+  overwrite   = true
+}
+
+resource "aws_ssm_parameter" "cognito_client_secret" {
+  name        = "/debuglens/${var.environment_name}/oauth-client-secret"
+  description = "Confidential OAuth client secret used by the internal reverse proxy."
+  type        = "SecureString"
+  value       = aws_cognito_user_pool_client.team.client_secret
   overwrite   = true
 }
