@@ -13,6 +13,8 @@ class Settings(BaseSettings):
     max_upload_bytes: int = Field(default=10 * 1024 * 1024, ge=1024, le=25 * 1024 * 1024)
     api_rate_limit_requests: int = Field(default=120, ge=1, le=10000)
     api_rate_limit_window_seconds: int = Field(default=60, ge=1, le=3600)
+    provider_rate_limit_requests: int = Field(default=30, ge=1, le=1000)
+    provider_rate_limit_window_seconds: int = Field(default=60, ge=1, le=3600)
     allowed_origins: str = "http://localhost:8501,http://127.0.0.1:8501"
     vision_api_key: str = ""
     vision_model: str = ""
