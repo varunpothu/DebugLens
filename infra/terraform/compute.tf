@@ -126,10 +126,10 @@ resource "aws_iam_role_policy" "instance_runtime" {
         Resource = [local.instance_parameter_arn]
       },
       {
-        Sid      = "DecryptSSMParametersViaSSM"
-        Effect   = "Allow"
-        Action   = ["kms:Decrypt"]
-        Resource = ["*"]
+        Sid       = "DecryptSSMParametersViaSSM"
+        Effect    = "Allow"
+        Action    = ["kms:Decrypt"]
+        Resource  = ["*"]
         Condition = {
           StringEquals = {
             "kms:ViaService" = "ssm.${var.aws_region}.amazonaws.com"
@@ -140,10 +140,29 @@ resource "aws_iam_role_policy" "instance_runtime" {
         }
       },
       {
-        Sid      = "WriteBootstrapLogs"
-        Effect   = "Allow"
-        Action   = ["logs:CreateLogStream", "logs:PutLogEvents", "logs:DescribeLogStreams"]
-        Resource = ["${aws_cloudwatch_log_group.application.arn}:*"]
+        Sid       = "WriteBootstrapLogs"
+        Effect    = "Allow"
+        Action    = ["logs:CreateLogStream", "logs:PutLogEvents", "logs:DescribeLogStreams"]
+        Resource  = ["${aws_cloudwatch_log_group.application.arn}:*"]
+      },
+      {
+        Sid       = "ReadAndWriteDatabaseBackups"
+        Effect    = "Allow"
+        Action    = ["s3:GetObject", "s3:PutObject"]
+        Resource  = ["${aws_s3_bucket.artifacts.arn}/backups/*"]
+      },
+      {
+        Sid       = "EncryptAndDecryptDatabaseBackups"
+        Effect    = "Allow"
+        Action    = ["kms:Decrypt", "kms:Encrypt", "kms:GenerateDataKey"]
+        Resource  = [aws_kms_key.artifacts.arn]
+        Condition = local.s3_kms_conditions
+      },
+      {
+        Sid       = "PublishBackupFailureAlerts"
+        Effect    = "Allow"
+        Action    = ["sns:Publish"]
+        Resource  = [aws_sns_topic.backup_failure.arn]
       }
     ]
   })
@@ -164,8 +183,11 @@ resource "aws_instance" "app" {
   iam_instance_profile        = aws_iam_instance_profile.app[0].name
   associate_public_ip_address = true
   user_data = templatefile("${path.module}/bootstrap.sh.tftpl", {
-    aws_region       = var.aws_region
-    environment_name = var.environment_name
+    aws_region               = var.aws_region
+    environment_name         = var.environment_name
+    artifact_bucket_name     = aws_s3_bucket.artifacts.bucket
+    artifact_kms_key_arn     = aws_kms_key.artifacts.arn
+    backup_failure_topic_arn = aws_sns_topic.backup_failure.arn
   })
   user_data_replace_on_change = false
 

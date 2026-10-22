@@ -43,4 +43,38 @@ Restore a snapshot to a new database path, then inspect it before switching the 
 python -m app.db_backup restore --source .\backups\debuglens-2026-10-22.sqlite --destination .\data\debuglens-restored.sqlite
 ```
 
-The restore command refuses to overwrite an existing file. For a production recovery, stop the application, preserve the current database and its WAL/SHM files, restore to a new path, verify the restored data, then deliberately switch the configured database path and restart. Keep backups encrypted and off-host in an approved storage location. The AWS pilot does not yet schedule or upload off-host backups automatically; a successful local backup is not a tested disaster-recovery plan.
+The restore command refuses to overwrite an existing file. For a production recovery, stop the application, preserve the current database and its WAL/SHM files, restore to a new path, verify the restored data, then deliberately switch the configured database path and restart. Keep backups encrypted and off-host in an approved storage location. The optional AWS host now has a daily systemd timer configured to upload SQLite snapshots and SHA-256 metadata to the private S3 `backups/` prefix using KMS encryption; Terraform configures a separate retention window. This remains inactive until the host is deployed. Failures are written to the backup log and sent to the configured SNS email subscription; the script preserves a failed local snapshot for investigation. Verify CloudWatch backup logs, the S3 object and its metadata, the email subscription, and a complete restore drill before relying on the schedule.
+
+
+### AWS pilot: restore a scheduled S3 backup
+
+Do this only through an approved Systems Manager Session Manager session. Replace the object name and region with the values from Terraform and the backup metadata. No recovery drill has yet been performed against a live AWS account.
+
+1. Create a fresh pre-restore backup and confirm the timer's service exits successfully:
+
+   ```bash
+   sudo systemctl start debuglens-backup.service
+   sudo systemctl status debuglens-backup.service --no-pager
+   ```
+
+2. Download the backup and its JSON metadata from the private S3 `backups/` prefix, then compare the SHA-256 digest in the metadata with `sha256sum` output before using it.
+3. Find the API container and copy the backup into the persistent data volume. Make the file readable by the non-root application user:
+
+   ```bash
+   container_id="$(docker compose --project-directory /opt/debuglens --env-file /etc/debuglens/runtime.env -f /opt/debuglens/deploy/compose.aws.yml ps -q api)"
+   docker cp /var/lib/debuglens-backups/RESTORE.sqlite "$container_id:/data/restore-source.sqlite"
+   docker exec -u 0 "$container_id" chown app:app /data/restore-source.sqlite
+   docker exec "$container_id" python -m app.db_backup restore --source /data/restore-source.sqlite --destination /data/debuglens-restored.sqlite
+   ```
+
+4. Switch the configured database path and restart the service:
+
+   ```bash
+   printf '%s\n' /data/debuglens-restored.sqlite | sudo tee /etc/debuglens/database-path >/dev/null
+   sudo chmod 0600 /etc/debuglens/database-path
+   sudo systemctl restart debuglens
+   ```
+
+5. Verify health, sign-in, expected records, and audit history before resuming use. If verification fails, set `/etc/debuglens/database-path` back to `/data/debuglens.db` and restart. Only after successful verification should you remove the temporary restore file and downloaded backup.
+
+The restore utility never overwrites an existing database. The AWS instance role can read and write only the `backups/*` prefix, with KMS access restricted to the artifact bucket. Treat this as a runbook awaiting a real restore drill, not evidence of tested disaster recovery.

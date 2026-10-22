@@ -11,7 +11,7 @@ This is a deliberately small, single-instance deployment target for a trusted te
 - All authenticated team members currently have the same application permissions. Per-user role-based authorization and per-user audit attribution still need a separate application change before sensitive or regulated team use.
 - The API and UI have no host-published ports. Caddy is the only public container entry point. SSH is not opened; use Systems Manager Session Manager.
 - The API defaults to mock analysis. External vision-provider access and browser capture remain disabled unless deliberately configured.
-- The app uses a local SQLite database on the EC2 root volume. This is a small pilot architecture, not high availability. Create and test backups before storing valuable records. Do not destroy the instance without exporting data.
+- The app uses a local SQLite database on the EC2 root volume. A daily encrypted S3 backup timer is configured for the optional host, with a separate `backups/` prefix and configurable 7–90 day retention. The schedule is inactive until the host is applied; verify the first successful upload and complete a restore drill before storing valuable records. This remains a single-instance pilot, not high availability.
 - Terraform state includes sensitive Cognito client metadata. Use the encrypted, versioned S3 backend described below before applying.
 
 ## 1. Prerequisites
@@ -162,3 +162,10 @@ This opt-in is global for the deployment, not a per-screenshot consent prompt. E
 ## Known limitations before production use
 
 This is a low-cost pilot, not a highly available or fully production-hardened service. There is one EC2 instance and one local SQLite database; there is no automatic failover, managed database, distributed rate limiter, per-user application RBAC, full tenant isolation, or automated deployment pipeline yet. Complete those controls and an independent security review before handling sensitive or regulated screenshots.
+
+
+## Scheduled SQLite backups
+
+When the optional host is enabled, a systemd timer creates a consistent SQLite snapshot daily around 02:15 UTC, verifies its integrity and SHA-256 digest, and uploads the database plus a metadata sidecar to the private S3 `backups/` prefix using the artifact KMS key. The default retention is 30 days and can be changed with `database_backup_retention_days` (7–90 days). The instance role can read/write only that backup prefix; it cannot list the bucket. Failures are logged and sent to the configured budget-alert email through SNS; confirm that email subscription after applying.
+
+After applying the infrastructure, verify the first successful run in `/var/log/debuglens-backup.log` and the CloudWatch application log group. Perform the restore procedure in [the operations runbook](../docs/operations.md#aws-pilot-restore-a-scheduled-s3-backup) before storing valuable records. The timer is configuration only until the host is deployed; CI cannot verify real AWS credentials, permissions, S3 uploads, or recovery.

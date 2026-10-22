@@ -18,6 +18,10 @@ if [ ! -d /opt/debuglens/.git ]; then
   git clone --depth 1 --branch main https://github.com/varunpothu/DebugLens.git /opt/debuglens
 fi
 
+install -m 0750 /opt/debuglens/infra/terraform/backup.sh /usr/local/sbin/debuglens-backup
+touch /var/log/debuglens-backup.log
+chmod 0600 /var/log/debuglens-backup.log
+
 cat >/usr/local/sbin/debuglens-start <<'SCRIPT'
 #!/bin/bash
 set -Eeuo pipefail
@@ -47,6 +51,14 @@ cookie_secret="$(parameter oauth-cookie-secret)"
 vision_key="$(parameter vision-api-key 2>/dev/null || true)"
 anthropic_key="$(parameter anthropic-api-key 2>/dev/null || true)"
 gemini_key="$(parameter gemini-api-key 2>/dev/null || true)"
+database_path="/data/debuglens.db"
+if [ -f /etc/debuglens/database-path ]; then
+  database_path="$(cat /etc/debuglens/database-path)"
+fi
+if [[ ! "$database_path" =~ ^/data/[A-Za-z0-9._-]+\.(db|sqlite)$ ]]; then
+  echo "Database path must be a simple .db or .sqlite filename directly inside /data."
+  exit 1
+fi
 
 if [[ -z "$domain" || -z "$issuer" || -z "$client_id" || -z "$client_secret" || -z "$api_token" || -z "$cookie_secret" ]]; then
   echo "Required DebugLens SSM parameters are missing; refusing to start the application."
@@ -62,6 +74,7 @@ install -d -m 0700 /etc/debuglens
   printf 'API_ACCESS_TOKEN=%s\n' "$api_token"
   printf 'OAUTH2_PROXY_COOKIE_SECRET=%s\n' "$cookie_secret"
   printf 'AWS_REGION=%s\n' "$AWS_REGION"
+  printf 'DATABASE_PATH=%s\n' "$database_path"
   printf 'ANALYSIS_PROVIDER=%s\n' "$analysis_provider"
   printf 'ALLOW_UNREDACTED_SCREENSHOTS=%s\n' "$allow_unredacted"
   printf 'VISION_MODEL=%s\n' "$vision_model"
@@ -102,6 +115,36 @@ TimeoutStartSec=0
 WantedBy=multi-user.target
 UNIT
 
+cat >/etc/systemd/system/debuglens-backup.service <<'BACKUPSERVICE'
+[Unit]
+Description=Create and upload an encrypted DebugLens SQLite backup
+After=docker.service debuglens.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+UMask=0077
+Environment=AWS_REGION=${aws_region}
+Environment=DEBUGLENS_BACKUP_BUCKET=${artifact_bucket_name}
+Environment=DEBUGLENS_BACKUP_KMS_KEY_ARN=${artifact_kms_key_arn}
+Environment=DEBUGLENS_BACKUP_FAILURE_TOPIC_ARN=${backup_failure_topic_arn}
+ExecStart=/usr/local/sbin/debuglens-backup
+BACKUPSERVICE
+
+cat >/etc/systemd/system/debuglens-backup.timer <<'BACKUPTIMER'
+[Unit]
+Description=Daily DebugLens SQLite backup
+
+[Timer]
+OnCalendar=*-*-* 02:15:00 UTC
+RandomizedDelaySec=900
+Persistent=true
+Unit=debuglens-backup.service
+
+[Install]
+WantedBy=timers.target
+BACKUPTIMER
+
 cat >/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json <<'CWCONFIG'
 {
   "logs": {
@@ -112,6 +155,12 @@ cat >/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json <<'CWCONF
             "file_path": "/var/log/debuglens-bootstrap.log",
             "log_group_name": "/debuglens/${environment_name}/application",
             "log_stream_name": "{instance_id}/bootstrap",
+            "timezone": "UTC"
+          },
+          {
+            "file_path": "/var/log/debuglens-backup.log",
+            "log_group_name": "/debuglens/${environment_name}/application",
+            "log_stream_name": "{instance_id}/backup",
             "timezone": "UTC"
           }
         ]
@@ -128,3 +177,5 @@ CWCONFIG
 systemctl daemon-reload
 systemctl enable debuglens.service
 systemctl start debuglens.service || echo "DebugLens not started yet. Add required SSM parameters and run: sudo systemctl restart debuglens"
+systemctl daemon-reload
+systemctl enable --now debuglens-backup.timer

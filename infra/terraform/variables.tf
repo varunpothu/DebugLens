@@ -148,3 +148,14 @@ variable "allow_unredacted_screenshots" {
   type        = bool
   default     = false
 }
+
+
+variable "database_backup_retention_days" {
+  description = "Number of days to retain encrypted SQLite backups in the private S3 bucket."
+  type        = number
+  default     = 30
+  validation {
+    condition     = var.database_backup_retention_days >= 7 && var.database_backup_retention_days <= 90
+    error_message = "Database backup retention must be between 7 and 90 days."
+  }
+}
