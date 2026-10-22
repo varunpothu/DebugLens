@@ -27,3 +27,20 @@ Monitor request count, rejection rate, p50/p95 latency, provider error/timeout/r
 5. Delete affected artefacts according to policy and legal requirements.
 6. Document root cause, impact, remediation, and regression tests.
 7. Re-enable only after the relevant release gate passes.
+
+
+## SQLite backup and restore
+
+Create a consistent snapshot of the configured database with SQLite's online backup API. The destination must be a new file; the command verifies SQLite integrity, writes with restrictive file permissions, and prints a SHA-256 digest.
+
+```powershell
+python -m app.db_backup backup --destination .\backups\debuglens-2026-10-22.sqlite
+```
+
+Restore a snapshot to a new database path, then inspect it before switching the application to use it:
+
+```powershell
+python -m app.db_backup restore --source .\backups\debuglens-2026-10-22.sqlite --destination .\data\debuglens-restored.sqlite
+```
+
+The restore command refuses to overwrite an existing file. For a production recovery, stop the application, preserve the current database and its WAL/SHM files, restore to a new path, verify the restored data, then deliberately switch the configured database path and restart. Keep backups encrypted and off-host in an approved storage location. The AWS pilot does not yet schedule or upload off-host backups automatically; a successful local backup is not a tested disaster-recovery plan.

@@ -114,6 +114,7 @@ services:
     init: true
     mem_limit: 128m
     cpus: 0.25
+    pids_limit: 64
     ports:
       - "80:80"
       - "443:443"
@@ -124,6 +125,9 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid
     security_opt:
       - no-new-privileges:true
     cap_drop:
