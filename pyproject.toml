@@ -21,7 +21,7 @@ dependencies = [
 dev = [
   "pytest>=9.1.1,<10.0",
   "ruff>=0.17.1,<1.0",
-  "mypy>=1.11,<2.0",
+  "mypy>=2.4.0,<3.0",
   "types-Pillow",
 ]
 ui = ["streamlit>=1.66.0,<2.0", "requests>=2.34.2,<3.0"]
